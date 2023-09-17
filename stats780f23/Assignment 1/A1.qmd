@@ -20,7 +20,43 @@ linestretch: 1.5
 
 ```{r}
 # Load the required packages
+library(tidyverse)
+library(ggplot2)
+```
 
+```{r}
+# Read data
+disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
+```
+
+```{r}
+# Select a subset of the data so it only includes plastic and rubber waste that goes to the landfill (cannot be treated, processed or recycled).
+disposalData <- disposalDataRaw %>%
+  # Keep only plastic and rubber waste (NAICS starting with 326)
+  filter(grepl("^326", `NAICS / Code_SCIAN`),
+         `Category (English) / Catégorie (Anglais)` == "Landfill") %>%
+  mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
+  group_by(`Reporting_Year / Année`,
+           `NAICS / Code_SCIAN`,
+           `NAICS Title / Titre Code_SCIAN`,
+           `PROVINCE`) %>%
+  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
+  rename(Year = `Reporting_Year / Année`,
+         "NAICS Code" = `NAICS / Code_SCIAN`,
+         "NAICS Category" = `NAICS Title / Titre Code_SCIAN`,
+         "Province" = `PROVINCE`)
+```
+
+```{r}
+# Transformation for graph
+disposalData_line <- disposalData %>% 
+  group_by(`Year`,`Province`) %>%
+  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
+
+# Line graph of waste quantity by province and year
+disposalData_line %>% 
+  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
+  geom_line()
 ```
 
 ## Introduction
