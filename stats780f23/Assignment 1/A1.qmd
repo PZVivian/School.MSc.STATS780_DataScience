@@ -1,0 +1,40 @@
+---
+title: "STATS/CSE 780 - Homework assignment 1"
+author: "Pao Zhu Vivian Hsu (Student number: 400547994)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: pdf
+editor: visual
+execute:
+  echo: false
+  output: false
+  warning: false
+  error: false
+bibliography: A1.bib
+fontsize: 11pt
+geometry: 
+  - margin = 1in
+linestretch: 1.5
+---
+
+\newpage
+
+```{r}
+# Load the required packages
+
+```
+
+## Introduction
+
+## Methods
+
+## Results
+
+## Discussion
+
+\newpage
+
+## Supplementary material
+
+\newpage
+
+## References
