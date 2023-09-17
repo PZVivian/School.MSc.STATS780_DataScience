@@ -23,16 +23,19 @@ linestretch: 1.5
 library(tidyverse)
 library(ggplot2)
 ```
-
 ```{r}
-## DATA LOADING AND CLEANSING ##
+## LOAD DATA ##
 
 disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
+```
 
-# Select a subset of the data so it only includes plastic and rubber waste that goes to the landfill (cannot be treated, processed or recycled).
+
+```{r}
+## DATA CLEANSING ##
+
+# Select a subset of the data that only includes plastic waste that ends up at the landfill.
 disposalData <- disposalDataRaw %>%
-  # Keep only plastic and rubber waste (NAICS starting with 326)
-  filter(grepl("^326", `NAICS / Code_SCIAN`),
+  filter(grepl("^3261", `NAICS / Code_SCIAN`),
          `Category (English) / Catégorie (Anglais)` == "Landfill") %>%
   mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
   group_by(`Reporting_Year / Année`,
