@@ -6,7 +6,6 @@ format: pdf
 editor: visual
 execute:
   echo: false
-  output: false
   warning: false
   error: false
 bibliography: A1.bib
@@ -19,17 +18,17 @@ linestretch: 1.5
 \newpage
 
 ```{r}
-# Load the required packages
+## PACKAGES ##
+
 library(tidyverse)
 library(ggplot2)
 ```
 
 ```{r}
-# Read data
-disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
-```
+## DATA LOADING AND CLEANSING ##
 
-```{r}
+disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
+
 # Select a subset of the data so it only includes plastic and rubber waste that goes to the landfill (cannot be treated, processed or recycled).
 disposalData <- disposalDataRaw %>%
   # Keep only plastic and rubber waste (NAICS starting with 326)
@@ -48,16 +47,33 @@ disposalData <- disposalDataRaw %>%
 ```
 
 ```{r}
-# Transformation for graph
+## WASTE QUANTITY BY PROVINCE AND YEAR ##
+
+# Preliminary data transformation
 disposalData_line <- disposalData %>% 
   group_by(`Year`,`Province`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
 
-# Line graph of waste quantity by province and year
+# Plot line graph
 disposalData_line %>% 
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
   geom_line()
 ```
+
+```{r}
+## WASTE QUANTITY BY YEAR AGGREGATED TO COUNTRY-LEVEL ##
+
+# Preliminary data transformation
+disposalData_line <- disposalData %>% 
+  group_by(`Year`) %>%
+  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
+
+# Plot line graph
+disposalData_line %>% 
+  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`)) +
+  geom_line()
+```
+
 
 ## Introduction
 
