@@ -33,17 +33,20 @@ disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.c
 ```{r}
 ## DATA CLEANSING ##
 
-# Select a subset of the data that only includes plastic waste that ends up at the landfill.
+# Only keep asbestos waste data
 disposalData <- disposalDataRaw %>%
-  filter(grepl("^3261", `NAICS / Code_SCIAN`),
-         `Category (English) / Catégorie (Anglais)` == "Landfill") %>%
+  filter(`CAS_Number / No_CAS` == "1332-21-4") %>% 
   mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
   group_by(`Reporting_Year / Année`,
+           `CAS_Number / No_CAS`,
+           `Substance Name (English) / Nom de substance (Anglais)`,
            `NAICS / Code_SCIAN`,
            `NAICS Title / Titre Code_SCIAN`,
            `PROVINCE`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
-  rename(Year = `Reporting_Year / Année`,
+  rename("Year" = `Reporting_Year / Année`,
+         "CAS_Number" = `CAS_Number / No_CAS`,
+         "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
          "NAICS Code" = `NAICS / Code_SCIAN`,
          "NAICS Category" = `NAICS Title / Titre Code_SCIAN`,
          "Province" = `PROVINCE`)
@@ -76,7 +79,6 @@ disposalData_line %>%
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`)) +
   geom_line()
 ```
-
 
 ## Introduction
 
