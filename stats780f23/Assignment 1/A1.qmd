@@ -46,24 +46,24 @@ disposalData <- disposalDataRaw %>%
            `PROVINCE`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
   ungroup() %>% 
-  mutate("NAICS Code (3-digit)" = substr(`NAICS / Code_SCIAN`, 1, 3)) %>% 
-  left_join(naicsCodes, by = c("NAICS Code (3-digit)" = "Code")) %>% 
+  mutate("Sector Code (3-digit NAICS Code)" = substr(`NAICS / Code_SCIAN`, 1, 3)) %>% 
+  left_join(naicsCodes, by = c("Sector Code (3-digit NAICS Code)" = "Code")) %>% 
+  mutate("Sector Name" = if_else(is.na(`Class title`), "Other", `Class title`)) %>% 
   select(`CAS_Number / No_CAS`,
          `Substance Name (English) / Nom de substance (Anglais)`,
          `Reporting_Year / Année`,
          `PROVINCE`,
          `NAICS / Code_SCIAN`,
          `NAICS Title / Titre Code_SCIAN`,
-         `NAICS Code (3-digit)`,
-         `Class title`,
+         `Sector Code (3-digit NAICS Code)`,
+         `Sector Name`,
          `Quantity (Tonnes)`) %>% 
-  rename("CAS_Number" = `CAS_Number / No_CAS`,
+  rename("CAS Number" = `CAS_Number / No_CAS`,
          "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
          "Year" = `Reporting_Year / Année`,
          "Province" = `PROVINCE`,
-         "NAICS Code (6-digit)" = `NAICS / Code_SCIAN`,
-         "NAICS Category (6-digit)" = `NAICS Title / Titre Code_SCIAN`,
-         "NAICS Category (3-digit)" = `Class title`)
+         "Industry Code (6-digit NAICS Code)" = `NAICS / Code_SCIAN`,
+         "Industry Name" = `NAICS Title / Titre Code_SCIAN`)
 ```
 
 ```{r}

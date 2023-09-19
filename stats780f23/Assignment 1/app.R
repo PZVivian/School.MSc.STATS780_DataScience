@@ -18,24 +18,24 @@ disposalData <- disposalDataRaw %>%
            `PROVINCE`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
   ungroup() %>% 
-  mutate("NAICS Code (3-digit)" = substr(`NAICS / Code_SCIAN`, 1, 3)) %>% 
-  left_join(naicsCodes, by = c("NAICS Code (3-digit)" = "Code")) %>% 
+  mutate("Sector Code (3-digit NAICS Code)" = substr(`NAICS / Code_SCIAN`, 1, 3)) %>% 
+  left_join(naicsCodes, by = c("Sector Code (3-digit NAICS Code)" = "Code")) %>% 
+  mutate("Sector Name" = if_else(is.na(`Class title`), "Other", `Class title`)) %>% 
   select(`CAS_Number / No_CAS`,
          `Substance Name (English) / Nom de substance (Anglais)`,
          `Reporting_Year / Année`,
          `PROVINCE`,
          `NAICS / Code_SCIAN`,
          `NAICS Title / Titre Code_SCIAN`,
-         `NAICS Code (3-digit)`,
-         `Class title`,
+         `Sector Code (3-digit NAICS Code)`,
+         `Sector Name`,
          `Quantity (Tonnes)`) %>% 
-  rename("CAS_Number" = `CAS_Number / No_CAS`,
+  rename("CAS Number" = `CAS_Number / No_CAS`,
          "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
          "Year" = `Reporting_Year / Année`,
          "Province" = `PROVINCE`,
-         "NAICS Code (6-digit)" = `NAICS / Code_SCIAN`,
-         "NAICS Category (6-digit)" = `NAICS Title / Titre Code_SCIAN`,
-         "NAICS Category (3-digit)" = `Class title`)
+         "Industry Code (6-digit NAICS Code)" = `NAICS / Code_SCIAN`,
+         "Industry Name" = `NAICS Title / Titre Code_SCIAN`)
 
 # Dropdown options
 provinceOptions <- disposalData %>%
@@ -48,7 +48,7 @@ provinceOptions <- disposalData %>%
 ui <- fluidPage(
 
     # Application title
-    titlePanel("Yearly Asbestos Waste Quantities by Province and Sector"),
+    titlePanel("Yearly Asbestos Waste by Province and Sector"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -71,14 +71,14 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   output$lineGraph <- renderPlot({
-    # Waste quantity by year and industry with a toggle on province
+    # Waste quantity by year and sector with a toggle on province
     disposalData %>% 
       filter(`Province` == input$province) %>% 
-      group_by(`Year`, `NAICS Category (3-digit)`) %>% 
-      summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>% 
-      arrange(desc(`Quantity (Tonnes)`), by_group = TRUE) %>% 
+      group_by(`Year`, `Sector Name`) %>% 
+      summarize("Quantity of Asbestos (Tonnes)" = sum(`Quantity (Tonnes)`)) %>% 
+      arrange(desc(`Quantity of Asbestos (Tonnes)`), by_group = TRUE) %>% 
       top_n(6) %>% 
-      ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`NAICS Category (3-digit)`)) +
+      ggplot(aes(x=`Year`, y=`Quantity of Asbestos (Tonnes)`, color=`Sector Name`)) +
       geom_line()
   })
   
