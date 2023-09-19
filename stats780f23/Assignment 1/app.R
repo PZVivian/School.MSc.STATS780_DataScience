@@ -76,8 +76,6 @@ server <- function(input, output) {
       filter(`Province` == input$province) %>% 
       group_by(`Year`, `Sector Name`) %>% 
       summarize("Quantity of Asbestos (Tonnes)" = sum(`Quantity (Tonnes)`)) %>% 
-      arrange(desc(`Quantity of Asbestos (Tonnes)`), by_group = TRUE) %>% 
-      top_n(6) %>% 
       ggplot(aes(x=`Year`, y=`Quantity of Asbestos (Tonnes)`, color=`Sector Name`)) +
       geom_line()
   })
