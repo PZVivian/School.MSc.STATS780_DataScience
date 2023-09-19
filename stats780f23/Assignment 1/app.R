@@ -4,8 +4,9 @@ library(ggplot2)
 
 ## DATA PRE-PROCESSING ##
 disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
+naicsCodes <- read_csv(file="naics-scian-2017-structure-v3-eng.csv")
 
-# Select a subset of the data that only includes plastic and rubber waste that ends up at the landfill.
+# Only keep asbestos waste data
 disposalData <- disposalDataRaw %>%
   filter(`CAS_Number / No_CAS` == "1332-21-4") %>% 
   mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
@@ -16,25 +17,38 @@ disposalData <- disposalDataRaw %>%
            `NAICS Title / Titre Code_SCIAN`,
            `PROVINCE`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
-  rename("Year" = `Reporting_Year / Année`,
-         "CAS_Number" = `CAS_Number / No_CAS`,
-         "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
-         "NAICS Code" = `NAICS / Code_SCIAN`,
-         "NAICS Category" = `NAICS Title / Titre Code_SCIAN`,
-         "Province" = `PROVINCE`)
-
-provinceOptions <- disposalData %>%
   ungroup() %>% 
-  distinct(`Province`) %>%
+  mutate("NAICS Code (3-digit)" = substr(`NAICS / Code_SCIAN`, 1, 3)) %>% 
+  left_join(naicsCodes, by = c("NAICS Code (3-digit)" = "Code")) %>% 
+  select(`CAS_Number / No_CAS`,
+         `Substance Name (English) / Nom de substance (Anglais)`,
+         `Reporting_Year / Année`,
+         `PROVINCE`,
+         `NAICS / Code_SCIAN`,
+         `NAICS Title / Titre Code_SCIAN`,
+         `NAICS Code (3-digit)`,
+         `Class title`,
+         `Quantity (Tonnes)`) %>% 
+  rename("CAS_Number" = `CAS_Number / No_CAS`,
+         "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
+         "Year" = `Reporting_Year / Année`,
+         "Province" = `PROVINCE`,
+         "NAICS Code (6-digit)" = `NAICS / Code_SCIAN`,
+         "NAICS Category (6-digit)" = `NAICS Title / Titre Code_SCIAN`,
+         "NAICS Category (3-digit)" = `Class title`)
+
+# Dropdown options
+provinceOptions <- disposalData %>%
   select(`Province`) %>% 
-  c()
+  distinct(`Province`) %>%
+  pull()
 
 
 ## APP UI ##
 ui <- fluidPage(
 
     # Application title
-    titlePanel("Yearly Asbestos Waste Quantities by Industry"),
+    titlePanel("Yearly Asbestos Waste Quantities by Province and Sector"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -59,12 +73,12 @@ server <- function(input, output) {
   output$lineGraph <- renderPlot({
     # Waste quantity by year and industry with a toggle on province
     disposalData %>% 
-      filter(`Province`==input$province) %>% 
-      group_by(`Year`, `NAICS Category`) %>% 
+      filter(`Province` == input$province) %>% 
+      group_by(`Year`, `NAICS Category (3-digit)`) %>% 
       summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>% 
       arrange(desc(`Quantity (Tonnes)`), by_group = TRUE) %>% 
       top_n(6) %>% 
-      ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`NAICS Category`)) +
+      ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`NAICS Category (3-digit)`)) +
       geom_line()
   })
   
