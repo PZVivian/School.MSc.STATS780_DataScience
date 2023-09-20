@@ -66,8 +66,26 @@ disposalData <- disposalDataRaw %>%
          "Industry Name" = `NAICS Title / Titre Code_SCIAN`)
 ```
 
+
+## Introduction
+
+From the construction of ceilings to the insulation of buildings, asbestos was a highly used material before its downfall in 19XX when it was found to be toxic and associated with respiratory illness. Asbestos was subsequently banned in Canada in 19YY, but many old buildings still contain the toxin and certain industries still use it to this day because a replacement could not be found. 
+
+The aim of this report is to explore trends in asbestos waste throughout Canada to provide direction in addressing the United Nations' Sustainable and Development Goal (SDG) 3. 
+
+## Methods
+
+### Data Collection
+The data was sourced from Open Data Canada. The purpose of 
+
+### Data Cleansing & Transformation
+After reading the data, it was then transformed to include only asbestos data by filtering for CAS number 1332-21-4. Due to differences in measurement methods across waste processing plants, the data was converted and standardized to tonnes.
+
+### Data Visualization 
 ```{r}
-## WASTE QUANTITY BY PROVINCE AND YEAR ##
+#| label: fig-prov-level
+#| fig-cap: "Asbestos waste by year and province"
+#| out-width: 50%
 
 # Preliminary data transformation
 disposalData_line <- disposalData %>% 
@@ -81,6 +99,9 @@ disposalData_line %>%
 ```
 
 ```{r}
+#| label: fig-country-level
+#| fig-cap: "Asbestos waste across Canada by year"
+#| out-width: 45%
 ## WASTE QUANTITY BY YEAR AGGREGATED TO COUNTRY-LEVEL ##
 
 # Preliminary data transformation
@@ -94,17 +115,26 @@ disposalData_line %>%
   geom_line()
 ```
 
-## Introduction
-
-## Methods
-
 ## Results
 
+
 ## Discussion
+Based on the visuals, what do you recommend ppl to do?
+
+Where were there limitations in the study?
+- Certain provinces/territories do not collect data on these substances. This could mean a couple of things - there is are no waste disposal places there, they do not report on waste quantities, or they do not track that particular substance.
+- The data is measured and estimated differently by institution. While different methods could produce different amounts of variation from the true quantity, it is not a concern this is the best that can be provided. If in doubt, can look to standardize measurement techniques.
+
+Results can be used to guide the development of stricter laws to reduce asbestos in the environment.
+
 
 \newpage
 
 ## Supplementary material
+
+###Figure 1: XYZ - Code
+###Figure 2: XYZ - Code
+###Figure 3: XYZ - Code
 
 \newpage
 
