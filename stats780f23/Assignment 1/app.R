@@ -1,10 +1,12 @@
 library(shiny)
 library(tidyverse)
 library(ggplot2)
+library(stringi)
+
 
 ### DATA PRE-PROCESSING ###
 disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
-naicsCodes <- read_csv(file="naics-scian-2017-structure-v3-eng.csv")
+naicsCodesRaw <- read_lines("https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825")
 
 ## STEP 1: CLEAN NAICS CODE TO CREATE 2-DIGIT NAICS LOOKUP DATA ##
 # Get 2-digit NAICS codes and their descriptions. If code ranges exist, then keep it is as is (ex. "31-33" for Manufacturing).
