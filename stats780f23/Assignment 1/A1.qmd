@@ -18,32 +18,32 @@ linestretch: 1.5
 \newpage
 
 ```{r}
-## PACKAGES ##
+### PACKAGES ###
 
 library(tidyverse)
 library(ggplot2)
 library(stringi)
-```
 
-```{r}
-## LOAD DATA ##
+
+### LOAD DATA ###
 
 disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
 naicsCodesRaw <- read_lines("https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825")
-```
 
 
-```{r}
 ### DATA CLEANSING ###
 
-## STEP 1: CLEAN NAICS CODE TO CREATE 2-DIGIT NAICS LOOKUP DATA ##
-# Get 2-digit NAICS codes and their descriptions. If code ranges exist, then keep it is as is (ex. "31-33" for Manufacturing).
+## STEP 1: CREATE 2-DIGIT NAICS LOOKUP DATA ##
+# Pull 2-digit NAICS codes and their descriptions from the source website. If code ranges exist, then keep it is as is
+# (ex. "31-33" for Manufacturing).
 naicsCodes <- data.frame(x=naicsCodesRaw) %>% 
   filter(grepl("<th id=", x)) %>% 
   mutate("Sector Code (2-digit NAICS Code)" = str_match(x, "CPV=\\s*(.*?)\\s*&")[,2],
          "Sector Name" = str_match(x, '"wb-inv">\\s*(.*?)\\s*</span>')[,2]) %>% 
   select(`Sector Code (2-digit NAICS Code)`, `Sector Name`)
-naicsCodes$`Sector Name` <- stri_replace_all_regex(naicsCodes$`Sector Name`, pattern = c("&#40;", "&#41;", "&#44;"), replacement = c("(", ")", ","), vectorize = F)
+naicsCodes$`Sector Name` <- stri_replace_all_regex(naicsCodes$`Sector Name`,
+                                                   pattern = c("&#40;", "&#41;", "&#44;"), 
+                                                   replacement = c("(", ")", ","), vectorize = F)
 
 # Break down code ranges into their own rows
 codeRangesOnly <- naicsCodes %>% 
@@ -55,11 +55,11 @@ codeRangesOnly <- naicsCodes %>%
   group_modify(~ tibble("Sector Code (2-digit NAICS Code)" = seq(.$repStart, .$repEnd))) %>%
   ungroup()
 
-# Replace any rows with code ranges with associated rows
+# Expand rows that have code ranges vertically so that each row only contains one code
 naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>% filter(str_length(`Sector Code (2-digit NAICS Code)`)==2)
 
 
-## STEP 2: FILTER FOR ASBESTOS AND JOIN 2-DIGIT NAICS LOOKUP DATA ##
+## STEP 2: FILTER DISPOSAL DATA FOR ASBESTOS AND JOIN 2-DIGIT NAICS LOOKUP DATA ##
 disposalData <- disposalDataRaw %>%
   filter(`CAS_Number / No_CAS` == "1332-21-4") %>% 
   mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
@@ -88,38 +88,48 @@ disposalData <- disposalDataRaw %>%
          "Province" = `PROVINCE`,
          "Industry Code (6-digit NAICS Code)" = `NAICS / Code_SCIAN`,
          "Industry Name" = `NAICS Title / Titre Code_SCIAN`)
+
+
+### SAVE CLEAN DATA FOR SHINY USE ###
+save(disposalData, file="shiny/disposalData.RData")
 ```
 
 
 ## Introduction
 
-From the construction of ceilings to the insulation of buildings, asbestos was a highly used material before its downfall in 19XX when it was found to be toxic and associated with respiratory illness. Asbestos was subsequently banned in Canada in 19YY, but many old buildings still contain the toxin and certain industries still use it to this day because a replacement could not be found. 
+From the construction of ceilings to the insulation of buildings, asbestos was a highly used material before its downfall in 19XX when it was found to be toxic and associated with respiratory illness. Asbestos was subsequently banned in Canada in 19YY, but many old buildings still contain the toxin and certain industries still use it to this day because a replacement could not be found.
 
-The aim of this report is to explore trends in asbestos waste throughout Canada to provide direction in addressing the United Nations' Sustainable and Development Goal (SDG) 3. 
+The aim of this report is to explore trends in asbestos waste throughout Canada to provide direction in addressing the United Nations' Sustainable and Development Goal (SDG) 3.
+
+Since its ban in
 
 ## Methods
 
 ### Data Collection
-The data was sourced from Open Data Canada. The purpose of 
+
+The data was sourced from Open Data Canada. The purpose of
 
 ### Data Cleansing & Transformation
+
 After reading the data, it was then transformed to include only asbestos data by filtering for CAS number 1332-21-4. Due to differences in measurement methods across waste processing plants, the data was converted and standardized to tonnes.
 
-### Data Visualization 
+### Data Visualization
+
 ```{r}
 #| label: fig-prov-level
 #| fig-cap: "Asbestos waste by year and province"
 #| out-width: 50%
 
 # Preliminary data transformation
-disposalData_line <- disposalData %>% 
+disposalData_fig1 <- disposalData %>% 
   group_by(`Year`,`Province`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
 
 # Plot line graph
-disposalData_line %>% 
+disposalData_fig1 %>% 
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
-  geom_line()
+  geom_line() + 
+  scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`), max(disposalData_line$`Year`), by = 4),1))
 ```
 
 ```{r}
@@ -129,37 +139,35 @@ disposalData_line %>%
 ## WASTE QUANTITY BY YEAR AGGREGATED TO COUNTRY-LEVEL ##
 
 # Preliminary data transformation
-disposalData_line <- disposalData %>% 
+disposalData_fig2 <- disposalData %>% 
   group_by(`Year`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
 
 # Plot line graph
-disposalData_line %>% 
+disposalData_fig2 %>% 
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`)) +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`), max(disposalData_line$`Year`), by = 4),1))
 ```
 
 ## Results
 
-
 ## Discussion
+
 Based on the visuals, what do you recommend ppl to do?
 
-Where were there limitations in the study?
-- Certain provinces/territories do not collect data on these substances. This could mean a couple of things - there is are no waste disposal places there, they do not report on waste quantities, or they do not track that particular substance.
-- The data is measured and estimated differently by institution. While different methods could produce different amounts of variation from the true quantity, it is not a concern this is the best that can be provided. If in doubt, can look to standardize measurement techniques.
+Where were there limitations in the study? - Certain provinces/territories do not collect data on these substances. This could mean a couple of things - there is are no waste disposal places there, they do not report on waste quantities, or they do not track that particular substance. - The data is measured and estimated differently by institution. While different methods could produce different amounts of variation from the true quantity, it is not a concern this is the best that can be provided. If in doubt, can look to standardize measurement techniques.
 
 Results can be used to guide the development of stricter laws to reduce asbestos in the environment.
-
 
 \newpage
 
 ## Supplementary material
 
-###Figure 1: XYZ - Code
-###Figure 2: XYZ - Code
-###Figure 3: XYZ - Code
+###Figure 1: XYZ - Code ###Figure 2: XYZ - Code ###Figure 3: XYZ - Code
 
 \newpage
 
 ## References
+
+Go through bookmarks bar
