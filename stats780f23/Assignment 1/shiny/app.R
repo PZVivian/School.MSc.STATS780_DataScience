@@ -48,11 +48,11 @@ server <- function(input, output) {
     disposalData_line <- disposalData %>% 
       filter(`Province` == input$province) %>% 
       group_by(`Year`, `Sector Name`) %>% 
-      summarize("Quantity of Asbestos (Tonnes)" = sum(`Quantity (Tonnes)`))
+      summarize("Quantity of Asbestos Waste (Kg) per Capita" = sum(`Quantity (Kg)`)/sum(`Population`))
     
     # Plot line graph showing waste quantity by year and sector for the selected province 
     disposalData_line %>% 
-      ggplot(aes(x=`Year`, y=`Quantity of Asbestos (Tonnes)`, color=`Sector Name`)) +
+      ggplot(aes(x=`Year`, y=`Quantity of Asbestos Waste (Kg) per Capita`, color=`Sector Name`)) +
       geom_line() +
       scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`),
                                             max(disposalData_line$`Year`), by = 4),1))

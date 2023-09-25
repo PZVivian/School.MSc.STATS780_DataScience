@@ -18,7 +18,7 @@ linestretch: 1.5
 
 \newpage
 
-```{r preprocessing}
+```{r setup}
 # ----- PACKAGES ----- #
 
 library(tidyverse)
@@ -31,8 +31,11 @@ library(stringi)
 disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", 
                             locale=locale(encoding="latin1"))
 naicsCodesRaw <- read_lines("https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825")
+popDataRaw <- read_csv(file="17100009.csv")
 
+```
 
+```{r cleansing}
 # ----- DATA CLEANSING ----- #
 
 # --- Step 1: Create 2-digit NAICS code lookup table --- #
@@ -64,26 +67,51 @@ codeRangesOnly <- naicsCodes %>%
 naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>% 
   filter(str_length(`Sector Code (2-digit NAICS Code)`)==2)
 
-# --- Step 2: Filter disposal data for asbestos and join 2-digit naics codes --- # 
+# --- Step 2: Create mapping of province codes to names --- # 
+provMap <- tibble("Province Code" = c("AB","BC","MB","NB","NL",
+                                      "NS","NT","NU","ON","PE",
+                                      "QC","SK","YT"),
+                  "Province Name" = c("Alberta","British Columbia","Manitoba","New Brunswick",
+                                      "Newfoundland and Labrador","Nova Scotia",
+                                      "Northwest Territories","Nunavut","Ontario",
+                                      "Prince Edward Island","Quebec","Saskatchewan","Yukon"))
+
+# --- Step 3: Get population data for each province --- # 
+popData <- popDataRaw %>% 
+  mutate("Population Year" = as.numeric(substr(`REF_DATE`, 1, 4)),
+         "Population Month" = substr(`REF_DATE`, 6, 7)) %>% 
+  filter(`Population Month` == "01",
+         `GEO` != "Canada") %>% 
+  select(`Population Year`,`Population Month`,`GEO`,`VALUE`)
+
+
+# --- Step 4: Filter disposal data for asbestos and join extra data --- # 
 disposalData <- disposalDataRaw %>%
   filter(grepl("asbestos",
                `Substance Name (English) / Nom de substance (Anglais)`,
                ignore.case = TRUE)) %>% 
-  mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg",
-                                       `Quantity / Quantité`/1000,
+  mutate("Quantity (Kg)" = if_else(`Units / Unités` == "tonnes",
+                                       `Quantity / Quantité`*1000,
                                        `Quantity / Quantité`),
          "Sector Code (2-digit NAICS Code)" = substr(`NAICS / Code_SCIAN`, 1, 2)) %>% 
   left_join(naicsCodes,
             by = c("Sector Code (2-digit NAICS Code)" = 
                      "Sector Code (2-digit NAICS Code)")) %>% 
+  left_join(provMap,
+            by = c("PROVINCE" = "Province Code")) %>% 
+  left_join(popData,
+            by = c("Province Name" = "GEO",
+                   "Reporting_Year / Année" = "Population Year")) %>% 
   group_by(`Reporting_Year / Année`,
-           `PROVINCE`,
+           `Province Name`,
            `Sector Code (2-digit NAICS Code)`,
-           `Sector Name`) %>%
-  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
+           `Sector Name`,
+           `VALUE`) %>%
+  summarize("Quantity (Kg)" = sum(`Quantity (Kg)`)) %>%
   ungroup() %>% 
   rename("Year" = `Reporting_Year / Année`,
-         "Province" = `PROVINCE`)
+         "Province" = `Province Name`,
+         "Population" = `VALUE`)
 
 
 # ----- SAVE DATA FOR SHINY ----- #
@@ -99,7 +127,11 @@ Asbestos was a common construction material prior to the 1990s that was later fo
 
 
 ## Methods
-To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered down to asbestos waste only. While the original data consisted of 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the aim of this study. The first two digits of the NAICS code were mapped to sector names using data scraped from the Statistics Canada website [-@naicsData]. This reduces the granularity of the original industry variables and allows for a high-level analysis later in the study. All quantities were converted to tonnes to standardize differences in measurement methods and the data was then aggregated by year, province, and sector to eliminate unused variables. Finally, three line graphs were created to examine country-level, province-level, and industry trends. All analyses were done using R and the last plot was created using Shiny [@citeShiny; @citeR].
+To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to asbestos waste only. While the original data had 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for this study. 
+
+Next, the data was enhanced using NAICS sector data and population estimates from Statistics Canada [-@naicsData, -@popData]. NAICS sector names were scraped from the Statistics Canada website [-@naicsData] and mapped to the first two digits of the NAICS code in the data. This reduces the granularity of the original industry variables and allows for a high-level analysis later in the study. Population estimates [@popData] were joined to the data by province. This allows for population size to be factored into the analysis.
+
+Finally, three line graphs were created to examine waste quantities at a country-level, province-level, and by industry. All quantities were converted to kilograms to standardize measurement methods and divided by population size before being plotted. All transformations and analyses were done using R and the last plot was created using Shiny [@citeShiny; @citeR].
 
 
 ## Results
@@ -113,11 +145,11 @@ To begin the study, disposal data was downloaded from the Open Government Portal
 # Preliminary data transformation
 disposalData_fig2 <- disposalData %>% 
   group_by(`Year`) %>%
-  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
+  summarize("Quantity of Asbestos Waste (Kg) per Capita" = sum(`Quantity (Kg)`)/sum(`Population`))
 
 # Plot line graph
 disposalData_fig2 %>% 
-  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`)) +
+  ggplot(aes(x=`Year`, y=`Quantity of Asbestos Waste (Kg) per Capita`)) +
   geom_line() +
   scale_x_continuous(breaks = round(seq(min(disposalData_fig2$`Year`), 
                                         max(disposalData_fig2$`Year`), by = 4),1))
@@ -135,11 +167,11 @@ disposalData_fig2 %>%
 # Preliminary data transformation
 disposalData_fig1 <- disposalData %>% 
   group_by(`Year`,`Province`) %>%
-  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
+  summarize("Quantity of Asbestos Waste (Kg) per Capita" = sum(`Quantity (Kg)`)/sum(`Population`))
 
 # Plot line graph
 disposalData_fig1 %>% 
-  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
+  ggplot(aes(x=`Year`, y=`Quantity of Asbestos Waste (Kg) per Capita`, color=`Province`)) +
   geom_line() + 
   scale_x_continuous(breaks = round(seq(min(disposalData_fig1$`Year`), 
                                         max(disposalData_fig1$`Year`), by = 4),1))
