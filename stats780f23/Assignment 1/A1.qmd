@@ -9,6 +9,7 @@ execute:
   warning: false
   error: false
 bibliography: A1.bib
+csl: https://www.zotero.org/styles/apa-single-spaced
 fontsize: 11pt
 geometry: 
   - margin = 1in
@@ -17,25 +18,25 @@ linestretch: 1.5
 
 \newpage
 
-```{r}
-### PACKAGES ###
+```{r preprocessing}
+# ----- PACKAGES ----- #
 
 library(tidyverse)
 library(ggplot2)
 library(stringi)
 
 
-### LOAD DATA ###
+# ----- LOAD DATA ----- #
 
-disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", locale=locale(encoding="latin1"))
+disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", 
+                            locale=locale(encoding="latin1"))
 naicsCodesRaw <- read_lines("https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825")
 
 
-### DATA CLEANSING ###
+# ----- DATA CLEANSING ----- #
 
-## STEP 1: CREATE 2-DIGIT NAICS LOOKUP DATA ##
-# Pull 2-digit NAICS codes and their descriptions from the source website. If code ranges exist, then keep it is as is
-# (ex. "31-33" for Manufacturing).
+# --- Step 1: Create 2-digit NAICS code lookup table --- #
+# Pull 2-digit NAICS codes / code ranges and their descriptions from the source website.
 naicsCodes <- data.frame(x=naicsCodesRaw) %>% 
   filter(grepl("<th id=", x)) %>% 
   mutate("Sector Code (2-digit NAICS Code)" = str_match(x, "CPV=\\s*(.*?)\\s*&")[,2],
@@ -43,82 +44,69 @@ naicsCodes <- data.frame(x=naicsCodesRaw) %>%
   select(`Sector Code (2-digit NAICS Code)`, `Sector Name`)
 naicsCodes$`Sector Name` <- stri_replace_all_regex(naicsCodes$`Sector Name`,
                                                    pattern = c("&#40;", "&#41;", "&#44;"), 
-                                                   replacement = c("(", ")", ","), vectorize = F)
+                                                   replacement = c("(", ")", ","), 
+                                                   vectorize = F)
 
-# Break down code ranges into their own rows
+# Break code ranges down to their own rows
 codeRangesOnly <- naicsCodes %>% 
   filter(str_length(`Sector Code (2-digit NAICS Code)`)>2) %>% 
-  mutate(repStart = as.integer(str_match(`Sector Code (2-digit NAICS Code)`, "([0-9]{2})[-]([0-9]{2})")[,2]),
-         repEnd = as.integer(str_match(`Sector Code (2-digit NAICS Code)`, "([0-9]{2})[-]([0-9]{2})")[,3])
+  mutate(repStart = as.integer(str_match(`Sector Code (2-digit NAICS Code)`,
+                                         "([0-9]{2})[-]([0-9]{2})")[,2]),
+         repEnd = as.integer(str_match(`Sector Code (2-digit NAICS Code)`,
+                                       "([0-9]{2})[-]([0-9]{2})")[,3])
   ) %>% 
   group_by(`Sector Name`) %>%
-  group_modify(~ tibble("Sector Code (2-digit NAICS Code)" = seq(.$repStart, .$repEnd))) %>%
+  group_modify(~ tibble("Sector Code (2-digit NAICS Code)" = 
+                          seq(.$repStart, .$repEnd))) %>%
   ungroup()
 
-# Expand rows that have code ranges vertically so that each row only contains one code
-naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>% filter(str_length(`Sector Code (2-digit NAICS Code)`)==2)
+# Replace rows with code ranges with the broken down rows
+naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>% 
+  filter(str_length(`Sector Code (2-digit NAICS Code)`)==2)
 
-
-## STEP 2: FILTER DISPOSAL DATA FOR ASBESTOS AND JOIN 2-DIGIT NAICS LOOKUP DATA ##
+# --- Step 2: Filter disposal data for asbestos and join 2-digit naics codes --- # 
 disposalData <- disposalDataRaw %>%
   filter(`CAS_Number / No_CAS` == "1332-21-4") %>% 
-  mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg", `Quantity / Quantité`/1000,`Quantity / Quantité`)) %>%
+  mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg",
+                                       `Quantity / Quantité`/1000,
+                                       `Quantity / Quantité`),
+         "Sector Code (2-digit NAICS Code)" = substr(`NAICS / Code_SCIAN`, 1, 2)) %>% 
+  left_join(naicsCodes,
+            by = c("Sector Code (2-digit NAICS Code)" = 
+                     "Sector Code (2-digit NAICS Code)")) %>% 
   group_by(`Reporting_Year / Année`,
-           `CAS_Number / No_CAS`,
-           `Substance Name (English) / Nom de substance (Anglais)`,
-           `NAICS / Code_SCIAN`,
-           `NAICS Title / Titre Code_SCIAN`,
-           `PROVINCE`) %>%
+           `PROVINCE`,
+           `Sector Code (2-digit NAICS Code)`,
+           `Sector Name`) %>%
   summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`)) %>%
   ungroup() %>% 
-  mutate("Sector Code (2-digit NAICS Code)" = substr(`NAICS / Code_SCIAN`, 1, 2)) %>% 
-  left_join(naicsCodes, by = c("Sector Code (2-digit NAICS Code)" = "Sector Code (2-digit NAICS Code)")) %>% 
-  select(`CAS_Number / No_CAS`,
-         `Substance Name (English) / Nom de substance (Anglais)`,
-         `Reporting_Year / Année`,
-         `PROVINCE`,
-         `NAICS / Code_SCIAN`,
-         `NAICS Title / Titre Code_SCIAN`,
-         `Sector Code (2-digit NAICS Code)`,
-         `Sector Name`,
-         `Quantity (Tonnes)`) %>% 
-  rename("CAS Number" = `CAS_Number / No_CAS`,
-         "Substance" = `Substance Name (English) / Nom de substance (Anglais)`,
-         "Year" = `Reporting_Year / Année`,
-         "Province" = `PROVINCE`,
-         "Industry Code (6-digit NAICS Code)" = `NAICS / Code_SCIAN`,
-         "Industry Name" = `NAICS Title / Titre Code_SCIAN`)
+  rename("Year" = `Reporting_Year / Année`,
+         "Province" = `PROVINCE`)
 
 
-### SAVE CLEAN DATA FOR SHINY USE ###
+# ----- SAVE DATA FOR SHINY ----- #
+
 save(disposalData, file="shiny/disposalData.RData")
+
 ```
 
 
 ## Introduction
 
-From the construction of ceilings to the insulation of buildings, asbestos was a highly used material before its downfall in 19XX when it was found to be toxic and associated with respiratory illness. Asbestos was subsequently banned in Canada in 19YY, but many old buildings still contain the toxin and certain industries still use it to this day because a replacement could not be found.
+Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines asbestos waste and identifies key industries that provinces can target to further reduce asbestos from the environment.
 
-The aim of this report is to explore trends in asbestos waste throughout Canada to provide direction in addressing the United Nations' Sustainable and Development Goal (SDG) 3.
-
-Since its ban in
 
 ## Methods
+Disposal data was downloaded from Open Data Canada [@disposalData] and filtered to only include asbestos waste using its Chemical Abstracts Service (CAS) number, 1332-21-4 [@]. Due to differences in measurement methods across waste management facilities, the data was converted to ensure that all measurements were in tonnes. Next, the first two digits of the North American Industry Classification System (NAICS) code was extracted and matched with data scraped from the Statstics Canada website to get sector names [@naicsData]. The data set was then aggregated to show waste quantities by year, province, and sector. Finally, three plots were created to examine the trends by province, for all of Canada, and by province and sector. All analysis was done using R [@citeR] and the last plot was created using Shiny [@citeShiny].
 
-### Data Collection
-
-The data was sourced from Open Data Canada. The purpose of
-
-### Data Cleansing & Transformation
-
-After reading the data, it was then transformed to include only asbestos data by filtering for CAS number 1332-21-4. Due to differences in measurement methods across waste processing plants, the data was converted and standardized to tonnes.
-
-### Data Visualization
+## Results
 
 ```{r}
 #| label: fig-prov-level
 #| fig-cap: "Asbestos waste by year and province"
-#| out-width: 50%
+#| out-width: 60%
+
+# ----- FIGURE 1 ----- #
 
 # Preliminary data transformation
 disposalData_fig1 <- disposalData %>% 
@@ -129,14 +117,16 @@ disposalData_fig1 <- disposalData %>%
 disposalData_fig1 %>% 
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
   geom_line() + 
-  scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`), max(disposalData_line$`Year`), by = 4),1))
+  scale_x_continuous(breaks = round(seq(min(disposalData_fig1$`Year`), 
+                                        max(disposalData_fig1$`Year`), by = 4),1))
+
 ```
 
 ```{r}
 #| label: fig-country-level
 #| fig-cap: "Asbestos waste across Canada by year"
-#| out-width: 45%
-## WASTE QUANTITY BY YEAR AGGREGATED TO COUNTRY-LEVEL ##
+#| out-width: 50%
+# ----- FIGURE 2 ----- #
 
 # Preliminary data transformation
 disposalData_fig2 <- disposalData %>% 
@@ -147,10 +137,10 @@ disposalData_fig2 <- disposalData %>%
 disposalData_fig2 %>% 
   ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`)) +
   geom_line() +
-  scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`), max(disposalData_line$`Year`), by = 4),1))
-```
+  scale_x_continuous(breaks = round(seq(min(disposalData_fig2$`Year`), 
+                                        max(disposalData_fig2$`Year`), by = 4),1))
 
-## Results
+```
 
 ## Discussion
 
@@ -160,14 +150,23 @@ Where were there limitations in the study? - Certain provinces/territories do no
 
 Results can be used to guide the development of stricter laws to reduce asbestos in the environment.
 
+- As a whole, Canada's asbestos waste has been trending 
+
 \newpage
 
 ## Supplementary material
 
-###Figure 1: XYZ - Code ###Figure 2: XYZ - Code ###Figure 3: XYZ - Code
+### Report Code
+```{r report-code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+### Shiny App Code
+```{r shiny-code, file="shiny/app.r", echo=TRUE, eval=FALSE}
+```
+
 
 \newpage
 
 ## References
-
-Go through bookmarks bar
+::: {#refs} 
+:::

@@ -4,18 +4,19 @@ library(ggplot2)
 library(stringi)
 
 
-### DATA PRE-PROCESSING ###
+# ----- DATA PRE-PROCESSING ----- #
+
 # Load cleaned disposal data
 load("disposalData.RData")
 
-# Dropdown options
+# Drop down options
 provinceOptions <- disposalData %>%
   select(`Province`) %>% 
   distinct(`Province`) %>%
   pull()
 
 
-### APP UI ###
+# ----- APP UI ----- #
 ui <- fluidPage(
 
     # Application title
@@ -38,7 +39,7 @@ ui <- fluidPage(
 )
 
 
-### SERVER LOGIC ###
+# ----- SERVER LOGIC ----- #
 server <- function(input, output) {
   
   output$lineGraph <- renderPlot({
@@ -53,11 +54,12 @@ server <- function(input, output) {
     disposalData_line %>% 
       ggplot(aes(x=`Year`, y=`Quantity of Asbestos (Tonnes)`, color=`Sector Name`)) +
       geom_line() +
-      scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`), max(disposalData_line$`Year`), by = 4),1))
+      scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`),
+                                            max(disposalData_line$`Year`), by = 4),1))
   })
   
 }
 
 
-### RUN APP ###
+# ----- RUN APP ----- #
 shinyApp(ui = ui, server = server)
