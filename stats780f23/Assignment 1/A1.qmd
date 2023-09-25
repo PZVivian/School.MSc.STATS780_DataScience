@@ -66,7 +66,9 @@ naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>%
 
 # --- Step 2: Filter disposal data for asbestos and join 2-digit naics codes --- # 
 disposalData <- disposalDataRaw %>%
-  filter(`CAS_Number / No_CAS` == "1332-21-4") %>% 
+  filter(grepl("asbestos",
+               `Substance Name (English) / Nom de substance (Anglais)`,
+               ignore.case = TRUE)) %>% 
   mutate("Quantity (Tonnes)" = if_else(`Units / Unités` == "kg",
                                        `Quantity / Quantité`/1000,
                                        `Quantity / Quantité`),
@@ -93,41 +95,20 @@ save(disposalData, file="shiny/disposalData.RData")
 
 ## Introduction
 
-Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines asbestos waste and identifies key sectors that provinces can target to further reduce the toxin from the environment.
+Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines yearly asbestos waste trends and identifies key sectors that provinces can target to further reduce the toxin from the environment.
 
 
 ## Methods
-To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to only asbestos waste using its Chemical Abstracts Service (CAS) number, 1332-21-4 [@]. While the original data consisted of 17 variables (see Supplementary Materials for details), only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the aim of this study. The first two digits of the NAICS code were mapped to sector names using data scraped from the Statistics Canada website [@naicsData]. This reduces the complexity of the original industry variables and allows for a high-level analysis later in the study. All quantities were converted to tonnes to standardize differences in measurement methods and the data was then aggregated by year, province, and sector to eliminate unused variables. Finally, three line graphs were created to examine the trends by province, aggregated to all of Canada, and by sectors specific to provinces. All analyses were done using R [@citeR] and the last plot was created using Shiny [@citeShiny].
+To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered down to asbestos waste only. While the original data consisted of 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the aim of this study. The first two digits of the NAICS code were mapped to sector names using data scraped from the Statistics Canada website [-@naicsData]. This reduces the granularity of the original industry variables and allows for a high-level analysis later in the study. All quantities were converted to tonnes to standardize differences in measurement methods and the data was then aggregated by year, province, and sector to eliminate unused variables. Finally, three line graphs were created to examine country-level, province-level, and industry trends. All analyses were done using R and the last plot was created using Shiny [@citeShiny; @citeR].
 
 
 ## Results
 
 ```{r}
-#| label: fig-prov-level
-#| fig-cap: "Asbestos waste by year and province"
-#| out-width: 60%
-
-# ----- FIGURE 1 ----- #
-
-# Preliminary data transformation
-disposalData_fig1 <- disposalData %>% 
-  group_by(`Year`,`Province`) %>%
-  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
-
-# Plot line graph
-disposalData_fig1 %>% 
-  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
-  geom_line() + 
-  scale_x_continuous(breaks = round(seq(min(disposalData_fig1$`Year`), 
-                                        max(disposalData_fig1$`Year`), by = 4),1))
-
-```
-
-```{r}
 #| label: fig-country-level
 #| fig-cap: "Asbestos waste across Canada by year"
 #| out-width: 50%
-# ----- FIGURE 2 ----- #
+# ----- COUNTRY-LEVEL LINE GRAPH ----- #
 
 # Preliminary data transformation
 disposalData_fig2 <- disposalData %>% 
@@ -143,7 +124,30 @@ disposalData_fig2 %>%
 
 ```
 
-https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/
+
+```{r}
+#| label: fig-prov-level
+#| fig-cap: "Asbestos waste by year and province"
+#| out-width: 60%
+
+# ----- PROVINCE-LEVEL LINE GRAPH ----- #
+
+# Preliminary data transformation
+disposalData_fig1 <- disposalData %>% 
+  group_by(`Year`,`Province`) %>%
+  summarize("Quantity (Tonnes)" = sum(`Quantity (Tonnes)`))
+
+# Plot line graph
+disposalData_fig1 %>% 
+  ggplot(aes(x=`Year`, y=`Quantity (Tonnes)`, color=`Province`)) +
+  geom_line() + 
+  scale_x_continuous(breaks = round(seq(min(disposalData_fig1$`Year`), 
+                                        max(disposalData_fig1$`Year`), by = 4),1))
+
+```
+
+
+[*$\color{blue}{\text{Shiny app}}$*](https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/)
 
 ## Discussion
 
