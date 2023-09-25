@@ -93,11 +93,12 @@ save(disposalData, file="shiny/disposalData.RData")
 
 ## Introduction
 
-Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines asbestos waste and identifies key industries that provinces can target to further reduce asbestos from the environment.
+Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines asbestos waste and identifies key sectors that provinces can target to further reduce the toxin from the environment.
 
 
 ## Methods
-Disposal data was downloaded from Open Data Canada [@disposalData] and filtered to only include asbestos waste using its Chemical Abstracts Service (CAS) number, 1332-21-4 [@]. Due to differences in measurement methods across waste management facilities, the data was converted to ensure that all measurements were in tonnes. Next, the first two digits of the North American Industry Classification System (NAICS) code was extracted and matched with data scraped from the Statstics Canada website to get sector names [@naicsData]. The data set was then aggregated to show waste quantities by year, province, and sector. Finally, three plots were created to examine the trends by province, for all of Canada, and by province and sector. All analysis was done using R [@citeR] and the last plot was created using Shiny [@citeShiny].
+To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to only asbestos waste using its Chemical Abstracts Service (CAS) number, 1332-21-4 [@]. While the original data consisted of 17 variables (see Supplementary Materials for details), only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the aim of this study. The first two digits of the NAICS code were mapped to sector names using data scraped from the Statistics Canada website [@naicsData]. This reduces the complexity of the original industry variables and allows for a high-level analysis later in the study. All quantities were converted to tonnes to standardize differences in measurement methods and the data was then aggregated by year, province, and sector to eliminate unused variables. Finally, three line graphs were created to examine the trends by province, aggregated to all of Canada, and by sectors specific to provinces. All analyses were done using R [@citeR] and the last plot was created using Shiny [@citeShiny].
+
 
 ## Results
 
@@ -141,6 +142,8 @@ disposalData_fig2 %>%
                                         max(disposalData_fig2$`Year`), by = 4),1))
 
 ```
+
+https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/
 
 ## Discussion
 
