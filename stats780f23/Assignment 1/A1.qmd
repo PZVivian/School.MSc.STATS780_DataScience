@@ -170,6 +170,12 @@ slope_QC <- lm(`Quantity of Asbestos Waste (Kg) per Capita` ~ `Year`,
                  ungroup() %>% 
                  filter(`Province` == "Quebec",
                         `Year` >= 2002))$coeff[[2]]
+mean_ON <- disposalData_provinceFig %>%
+  ungroup() %>% 
+  filter(`Province` == "Ontario",
+         `Year` >= 2005) %>% 
+  select(`Quantity of Asbestos Waste (Kg) per Capita`) %>% 
+  sapply(mean)
 mean_other <- disposalData_provinceFig %>%
   ungroup() %>% 
   filter(`Province` != c("Alberta", "Manitoba", "Quebec", "Ontario")) %>% 
@@ -182,15 +188,15 @@ mean_other <- disposalData_provinceFig %>%
 
 ## Introduction
 
-Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in many old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines yearly asbestos waste trends and identifies key sectors that provinces can target to further reduce the toxin from the environment.
+Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in many old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. The aim of this report is to examine yearly asbestos waste trends and identify key provinces and sectors contributing to asbestos waste in Canada.
 
 
 ## Methods
 To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to asbestos waste only. While the original data had 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the analyses.
 
-To enhance the data, NAICS sector names and population estimates from Statistics Canada [-@naicsData; -@popData] were joined to the data set. NAICS sector names were scraped from the Statistics Canada website [-@naicsData] and mapped to the first two digits of the NAICS code in the data set. By adding sector names, waste trends could be analyzed at a high-level for each province. Population estimates [@popData] were also joined to the data. This ensures that the analyses accounts for differences in waste quantities attributed to the population size of provinces.
+To enhance the data, NAICS sector names and population estimates from Statistics Canada [-@naicsData; -@popData] were joined to the data set. NAICS sector names were scraped from the Statistics Canada website [-@naicsData] and mapped to the first two digits of the NAICS code in the data set. By adding sector names, waste trends could be analyzed at a high-level for each province. Population estimates [@popData] were also joined to the data. This ensures that differences in waste quantities caused by the population size of provinces were accounted for in the analyses.
 
-Finally, three line graphs were created to examine waste quantities across the country, by province, and by sector. Quantities were converted to kilograms to standardize measurement methods and divided by population size before being plotted. All transformations and analyses were done using R and the last plot was made with Shiny [@citeShiny; @citeR].
+Finally, three line graphs were created to visualize waste quantities across the country, by province, and by sector. Quantities were converted to kilograms to standardize measurement methods and divided by population size before being plotted. All transformations and analyses were done using R and the last plot was made with Shiny [@citeShiny; @citeR].
 
 
 ## Results
@@ -217,7 +223,11 @@ disposalData_countryFig %>%
 
 ```
 
-While this shows annual asbestos waste quantities across Canada, each province has its own unique trend as shown in @fig-province below. Alberta and Manitoba followed a similar pattern as the country, where asbestos waste increased for a period of time and decreased subsequently. Both provinces managed to have a yearly asbestos waste level of about `r round(mean_AB_MB, 2)` kg per capita since 2015. Quebec and Ontario, on the other hand, have a continually increasing trend. Quebec's asbestos waste increased by an average of `r round(slope_QC, 2)` kg per capita yearly since 2002. Ontario has a generally increasing trend as well, but may have began to decline in 2017. Not enough data is available to confirm this. The remaining provinces have a relatively stable and low trend of about `r round(mean_other, 2)` kg of yearly asbestos waste per capita.
+While this provides insight on asbestos waste across Canada, the trend for each province differs as shown in @fig-province below. Alberta and Manitoba followed a similar pattern as the country, where asbestos waste increased for a period of time and decreased subsequently. Both provinces managed to have a yearly asbestos waste level of about `r round(mean_AB_MB, 2)` kg per capita since 2015. Quebec, on the other hand, has a continually increasing trend. Waste quantities have increased by an average of `r round(slope_QC, 2)` kg per capita yearly since 2002. The remaining provinces have a relatively stable trend. Ontario's annual waste is about `r round(mean_ON, 2)` kg per capita since 2005 while the rest of the provinces have approximately `r round(mean_other, 2)` kg per capita.
+
+
+
+
 
 ```{r}
 #| label: fig-province
@@ -244,13 +254,14 @@ Provincial trends in asbestos waste are linked to different sectors as shown in 
 
 ## Discussion
 
-Overall, this study shows that asbestos waste is generally decreasing in Canada, although trends between provinces vary. The sectors involved with administrative and support, waste management, remediation services, and manufacturing are key drivers of provincial trends.
+Overall, this study illustrates that asbestos waste has began to decline across Canada after nearly 15 years of increase. This trend does not apply at the provincial level, since each province has its own unique trend. The administrative and support, waste management, remediation services, and manufacturing sectors appear to have a strong influence on asbestos waste in many provinces.
 
-When interpreting the results, it is important to note that Prince Edward Island, Yukon, Northwest Territories, and Nunavut were missing from the data set [@disposalData]. Since zeros in the data indicate that a substance is being tracked but has no waste [@npriInfo], these provinces and territories are most likely not tracking asbestos as there were no rows for them in the data [@disposalData]. As such, they were excluded from the study. To improve similar studies in the future and promote equal well-being across Canada, tracking asbestos in these provinces and territories is suggested.
+A few considerations should be made when interpreting the results of this study. Firstly, Prince Edward Island, Yukon, Northwest Territories, and Nunavut were missing from the data set [@disposalData]. Since zeros in the data indicate that a substance is being tracked but has no waste [@npriInfo], these provinces and territories are most likely not tracking asbestos as there were no rows for them in the data [@disposalData]. To improve future studies and promote equal well-being of all Canadians, tracking asbestos in these provinces and territories is suggested.
 
-From the available data, a few recommendations can be made to reduce asbestos waste. At a federal level, funding and efforts should be focused on Quebec and Ontario since these provinces continue to have increasing waste trends. It may be useful to learn how Alberta and Manitoba managed to decrease and maintain their asbestos waste quantities, and apply similar practices to other provinces. At a provincial level, investigation into the sectors that drive asbestos waste is recommended. Understanding how these sectors are producing the waste and why waste levels are increasing could help eliminate asbestos within provinces.
+Secondly, it is crucial to understand that asbestos waste could be both negative and positive. High quantities of asbestos waste could indicate that the toxin is being heavily produced and used by industries, specifically those permitted by the law [@ban2018laws]. This poses a risk to human health and should ideally be eliminated. Conversely, asbestos waste could also indicate the removal of old asbestos deposits. If completed with the proper precautions [@asbestosHealth], a temporary rise in waste should lead to a safer environment over time. As such, it is recommended to investigate waste sources prior to any action.
 
-This leads to one final note, increased levels of asbestos waste could indicate both negative and positive aspects about the environment. Asbestos waste is negative if the industries that are permitted to use asbestos [@ban2018laws] are producing, using, and disposing of it frequently. On the other hand, it can also be positive if the waste is coming from the removal of old asbestos deposits and guidelines for proper removal are followed [@asbestosHealth]. It is highly recommended to investigate the sources of asbestos waste prior to any action and by doing so, an effective solution can be made to reduce the toxin and create a healthier environment for all Canadians.
+Once the sources are understood, the results of this study can serve as guidance to reduce asbestos from the environment. At a federal level, funding and efforts should focus on Quebec since asbestos waste continues to grow with time. It may be useful to learn how Alberta and Manitoba managed to decrease and maintain waste quantities, and apply similar practices elsewhere. At a provincial level, providing funding and resources to better understand asbestos waste within sectors could help improve existing practices with asbestos and create a healthier environment in Canada.
+
 
 
 \newpage
