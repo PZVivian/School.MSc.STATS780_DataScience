@@ -60,7 +60,6 @@ server <- function(input, output) {
       scale_x_continuous(breaks = round(seq(min(disposalData_line$`Year`),
                                             max(disposalData_line$`Year`), by = 4),1))
   })
-  
 }
 
 

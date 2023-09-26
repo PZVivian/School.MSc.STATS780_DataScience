@@ -30,10 +30,13 @@ library(tidyverse)
 library(ggplot2)
 library(stringi)
 
-disposalDataRaw <- read_csv(file="NPRI-INRP_DisposalsEliminations_1993-present.csv", 
-                            locale=locale(encoding="latin1"))
-naicsCodesRaw <- read_lines("https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825")
-popDataRaw <- read_csv(file="17100009.csv")
+disposalFile <- "NPRI-INRP_DisposalsEliminations_1993-present.csv"
+naicsCodesFile <- "https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1369825"
+popFile <- "17100009.csv"
+
+disposalDataRaw <- read_csv(file=disposalFile, locale=locale(encoding="latin1"))
+naicsCodesRaw <- read_lines(naicsCodesFile)
+popDataRaw <- read_csv(file=popFile)
 
 
 ```
@@ -42,16 +45,17 @@ popDataRaw <- read_csv(file="17100009.csv")
 # ----- DATA CLEANSING ----- #
 
 # --- Step 1: Create 2-digit NAICS code lookup table --- #
-# Pull 2-digit NAICS codes / code ranges and their descriptions from the source website.
+# Pull 2-digit NAICS codes / code ranges and their descriptions from the website.
 naicsCodes <- data.frame(x=naicsCodesRaw) %>% 
   filter(grepl("<th id=", x)) %>% 
   mutate("Sector Code (2-digit NAICS Code)" = str_match(x, "CPV=\\s*(.*?)\\s*&")[,2],
          "Sector Name" = str_match(x, '"wb-inv">\\s*(.*?)\\s*</span>')[,2]) %>% 
   select(`Sector Code (2-digit NAICS Code)`, `Sector Name`)
 naicsCodes$`Sector Name` <- stri_replace_all_regex(naicsCodes$`Sector Name`,
-                                                   pattern = c("&#40;", "&#41;", "&#44;"), 
+                                                   pattern = 
+                                                     c("&#40;", "&#41;", "&#44;"), 
                                                    replacement = c("(", ")", ","), 
-                                                   vectorize = F)
+                                                   vectorize = FALSE)
 
 # Break code ranges down to their own rows
 codeRangesOnly <- naicsCodes %>% 
@@ -71,13 +75,13 @@ naicsCodes <- rbind(naicsCodes, codeRangesOnly) %>%
   filter(str_length(`Sector Code (2-digit NAICS Code)`)==2)
 
 # --- Step 2: Create mapping of province codes to names --- # 
-provMap <- tibble("Province Code" = c("AB","BC","MB","NB","NL","NS","NT","NU","ON","PE",
-                                      "QC","SK","YT"),
+provMap <- tibble("Province Code" = c("AB","BC","MB","NB","NL","NS","NT",
+                                      "NU","ON","PE","QC","SK","YT"),
                   "Province Name" = c("Alberta","British Columbia","Manitoba",
                                       "New Brunswick","Newfoundland and Labrador",
-                                      "Nova Scotia","Northwest Territories","Nunavut",
-                                      "Ontario","Prince Edward Island","Quebec",
-                                      "Saskatchewan","Yukon"))
+                                      "Nova Scotia","Northwest Territories",
+                                      "Nunavut","Ontario","Prince Edward Island",
+                                      "Quebec","Saskatchewan","Yukon"))
 
 # --- Step 3: Get population data for each province --- # 
 popData <- popDataRaw %>% 
@@ -139,10 +143,11 @@ mean_1990s <- disposalData_countryFig %>%
   select(`Quantity of Asbestos Waste (Kg) per Capita`) %>% 
   sapply(mean)
 slope_early2000sToMid2010s <- lm(`Quantity of Asbestos Waste (Kg) per Capita` ~ `Year`,
-                            data=disposalData_countryFig %>% filter(`Year` >= 2000, 
-                                                              `Year` <= 2014))$coeff[[2]]
+                                 data=disposalData_countryFig %>% 
+                                   filter(`Year` >= 2000,`Year` <= 2014))$coeff[[2]]
 slope_mid2010sToPresent <- lm(`Quantity of Asbestos Waste (Kg) per Capita` ~ `Year`, 
-                              data=disposalData_countryFig %>% filter(`Year` >= 2014))$coeff[[2]]
+                              data=disposalData_countryFig %>% 
+                                filter(`Year` >= 2014))$coeff[[2]]
 
 # --- Step 2: Data for province-level line graph --- #
 # Aggregate data
@@ -151,43 +156,65 @@ disposalData_provinceFig <- disposalData %>%
   summarize("Quantity of Asbestos Waste (Kg) per Capita" = 
               sum(`Quantity (Kg)`)/sum(`Population`))
 
+# Stats for in-text description
+mean_AB_MB <- disposalData_provinceFig %>%
+  ungroup() %>% 
+  filter(`Province` == c("Alberta", "Manitoba"),
+         `Year` >= 2015) %>% 
+  select(`Quantity of Asbestos Waste (Kg) per Capita`) %>% 
+  sapply(mean)
+slope_QC <- lm(`Quantity of Asbestos Waste (Kg) per Capita` ~ `Year`,
+               data=disposalData_provinceFig %>% 
+                 ungroup() %>% 
+                 filter(`Province` == "Quebec",
+                        `Year` >= 2002))$coeff[[2]]
+mean_other <- disposalData_provinceFig %>%
+  ungroup() %>% 
+  filter(`Province` != c("Alberta", "Manitoba", "Quebec", "Ontario")) %>% 
+  select(`Quantity of Asbestos Waste (Kg) per Capita`) %>% 
+  sapply(mean)
+
 
 ```
 
 
 ## Introduction
 
-Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines yearly asbestos waste trends and identifies key sectors that provinces can target to further reduce the toxin from the environment.
+Asbestos was a common construction material prior to the 1990s that was later found to be linked to diseases such as lung cancer and asbestosis [@asbestosHealth]. Although it was banned in 2018, asbestos is still prevalent in many old buildings and actively used in the military, nuclear, and chlor-alkali industries in Canada [@ban2018laws]. This report examines yearly asbestos waste trends and identifies key sectors that provinces can target to further reduce the toxin from the environment.
 
 
 ## Methods
-To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to asbestos waste only. While the original data had 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for this study. 
+To begin the study, disposal data was downloaded from the Open Government Portal [@disposalData] and filtered to asbestos waste only. While the original data had 17 variables, only the year, province, North American Industry Classification System (NAICS) code, and quantity of waste were important for the analysis.
 
-Next, the data was enhanced using NAICS sector data and population estimates from Statistics Canada [-@naicsData, -@popData]. NAICS sector names were scraped from the Statistics Canada website [-@naicsData] and mapped to the first two digits of the NAICS code in the data. This reduces the granularity of the original industry variables and allows for a high-level analysis later in the study. Population estimates [@popData] were joined to the data by province. This allows waste quantities to be adjusted by population size to account for differences caused by larger populations as seen in some provinces compared to others.
+To enhance the data, NAICS sector data and population estimates from Statistics Canada were joined to the data set [-@naicsData, -@popData]. NAICS sector names were scraped from the Statistics Canada website [-@naicsData] and mapped to the first two digits of the NAICS code in the data set. By adding the sector names, waste trends could be analyzed at a high-level to serve as a starting point to inform action. Population estimates [@popData] were also joined to the data. This ensures that the analyses accounts for differences in waste quantities attributed to the population size of provinces.
 
-Finally, three line graphs were created to examine waste quantities at a country-level, province-level, and by industry. Quantities were converted to kilograms to standardize measurement methods and divided by population size before being plotted. All transformations and analyses were done using R and the last plot was created using Shiny [@citeShiny; @citeR].
+Finally, after data was processed, three line graphs were created to examine waste quantities at a country-level, province-level, and by industry. Quantities were converted to kilograms to standardize measurement methods and divided by population size before being plotted. All transformations and analyses were done using R and the last plot was created using Shiny [@citeShiny; @citeR].
 
 
 ## Results
-During the 1990s, asbestos waste was relatively stable in Canada at approximately `r round(mean_1990s, 2)` kg of waste per capita. From the early 2000s to the mid 2010s, waste quantities increased by `r round(slope_early2000sToMid2010s, 2)` kg per capita annually. Then from the mid 2010s to the latest available year 2021, there is a decrease of about `r round(abs(slope_mid2010sToPresent), 2)` kg per capita per year. These trends are shown in @fig-country below. 
+@fig-country illustrates yearly quantities of asbestos waste in kilograms across Canada. Based on the plot, the trends in waste could be viewed in three sections. The first section is the 1990s, where asbestos waste was relatively stable every year at about `r round(mean_1990s, 2)` kg of waste per capita. The second section encompasses the early 2000s to mid 2010s, where asbestos waste increased by approximately `r round(slope_early2000sToMid2010s, 2)` kg per capita annually. The last section is the mid 2010s to the latest available year, 2021, where there appears to be an average decrease of about `r round(abs(slope_mid2010sToPresent), 2)` kg per capita yearly.
 
 ```{r}
 #| label: fig-country
-#| fig-cap: "Asbestos waste across Canada by year"
+#| fig-cap: "Annual asbestos waste across Canada can divided into 3 trends"
 #| fig-align: "center"
 #| fig-width: 12
 #| fig-height: 4
 # ----- PLOT COUNTRY-LEVEL LINE GRAPH ----- #
 
 disposalData_countryFig %>% 
-  ggplot(aes(x=`Year`, y=`Quantity of Asbestos Waste (Kg) per Capita`)) +
+  ggplot(aes(x=`Year`, 
+             y=`Quantity of Asbestos Waste (Kg) per Capita`)) +
   geom_line() +
+  geom_vline(xintercept=2000, linetype="dashed", color = "blue") +
+  geom_vline(xintercept=2014, linetype="dashed", color = "blue") +
   scale_x_continuous(breaks = round(seq(min(disposalData_countryFig$`Year`), 
-                                        max(disposalData_countryFig$`Year`), by = 2),1))
+                                        max(disposalData_countryFig$`Year`), 
+                                        by = 2),
+                                    1))
 
 ```
-
-In @fig-province, we can see how these trend differ at the provincial level. 
+While this suggests that asbestos waste is currently declining across Canada, every province has its own unique trend as shown in @fig-province below. Alberta and Manitoba followed a similar pattern with the country, where asbestos waste increased for a period of time and decreased in the recent years. Both provinces managed to have a yearly asbestos waste level of about `r round(mean_AB_MB, 2)` kg per capita since 2015. Quebec and Ontario, on the other hand, have continually increasing trend. Quebec's asbestos waste increased by an average `r round(slope_QC, 2)` kg per capita yearly since 2002. Ontario has a generally increasing trend, but may have began to decline in 2017. The remaining provinces have a relatively stable and low trend of about `r round(mean_other, 2)` kg of yearly asbestos waste per capita.
 
 ```{r}
 #| label: fig-province
@@ -199,16 +226,20 @@ In @fig-province, we can see how these trend differ at the provincial level.
 # ----- PLOT PROVINCE-LEVEL LINE GRAPH ----- #
 
 disposalData_provinceFig %>% 
-  ggplot(aes(x=`Year`, y=`Quantity of Asbestos Waste (Kg) per Capita`, color=`Province`)) +
+  ggplot(aes(x=`Year`, 
+             y=`Quantity of Asbestos Waste (Kg) per Capita`, 
+             color=`Province`)) +
   geom_line() + 
   scale_x_continuous(breaks = round(seq(min(disposalData_provinceFig$`Year`), 
-                                        max(disposalData_provinceFig$`Year`), by = 2),1))
+                                        max(disposalData_provinceFig$`Year`), 
+                                        by = 2),
+                                    1))
 
 ```
 
-In the Shiny app ([*$\color{blue}{\text{https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/}}$*](https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/)), we narrow down provincial trends to the sector level to provide insight on which sectors provinces should consider investigating into.
+Provincial trends in asbestos waste are linked to different sectors as shown in the Shiny app: [*$\color{blue}{\text{https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/}}$*](https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/). The two main sectors that have large impacts on provincial trends are the "Administrative and support, waste management and remediation services" and "Manufacturing" sectors.
 
-## Discussion
+## Conclusions
 
 Based on the visuals, what do you recommend ppl to do?
 
