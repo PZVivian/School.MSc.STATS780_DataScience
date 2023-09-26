@@ -260,9 +260,7 @@ A few considerations should be made when interpreting the results of this study.
 
 Secondly, it is crucial to understand that asbestos waste could be both negative and positive. High quantities of asbestos waste could indicate that the toxin is being heavily produced and used by industries, specifically those permitted by the law [@ban2018laws]. This poses a risk to human health and should ideally be eliminated. Conversely, asbestos waste could also indicate the removal of old asbestos deposits. If completed with the proper precautions [@asbestosHealth], a temporary rise in waste should lead to a safer environment over time. As such, it is recommended to investigate waste sources prior to any action.
 
-Once the sources are understood, the results of this study can serve as guidance to reduce asbestos from the environment. At a federal level, funding and efforts should focus on Quebec since asbestos waste continues to grow with time. It may be useful to learn how Alberta and Manitoba managed to decrease and maintain waste quantities, and apply similar practices elsewhere. At a provincial level, providing funding and resources to better understand asbestos waste within sectors could help improve existing practices with asbestos and create a healthier environment in Canada.
-
-
+Once the sources are understood, the results of this study can serve as guidance to reduce asbestos from the environment. At a federal level, funding and efforts should focus on Quebec since the province's waste continues to grow with time. It may be useful to learn how Alberta and Manitoba managed to decrease and maintain their waste, and apply similar practices elsewhere. At a provincial level, providing funding and resources to better understand asbestos waste within sectors could help improve existing practices with asbestos. With these suggestions, Canada can reduce asbestos from the environment and ensure that all Canadians lead a healthy, asbestos-free life.
 
 \newpage
 
