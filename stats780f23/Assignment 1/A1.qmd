@@ -250,7 +250,7 @@ disposalData_provinceFig %>%
 
 ```
 
-Provincial trends in asbestos waste are linked to different sectors as shown in the following Shiny app: [*$\color{blue}{\text{https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/}}$*](https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/). The two main sectors that have large impacts on provincial trends are the "Administrative and support, waste management and remediation services" and "Manufacturing" sectors.
+Provincial trends in asbestos waste are linked to different sectors as shown in the following Shiny app: [*$\color{blue}{\text{https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/stats780-a1/}}$*](https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/stats780-a1/) [@a1Shiny]. The two main sectors that have large impacts on provincial trends are the "Administrative and support, waste management and remediation services" and "Manufacturing" sectors.
 
 ## Discussion
 

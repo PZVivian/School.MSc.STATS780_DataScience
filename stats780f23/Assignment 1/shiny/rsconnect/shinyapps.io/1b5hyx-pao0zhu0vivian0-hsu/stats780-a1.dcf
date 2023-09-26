@@ -1,12 +1,12 @@
-name: shiny
-title: shiny
+name: stats780-a1
+title: stats780-a1
 username: 1b5hyx-pao0zhu0vivian0-hsu
 account: 1b5hyx-pao0zhu0vivian0-hsu
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 9973485
-bundleId: 7731307
-url: https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/shiny/
+appId: 10000681
+bundleId: 7731370
+url: https://1b5hyx-pao0zhu0vivian0-hsu.shinyapps.io/stats780-a1/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
