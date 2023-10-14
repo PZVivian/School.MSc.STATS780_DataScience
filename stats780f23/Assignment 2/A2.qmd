@@ -1,0 +1,146 @@
+---
+title: |
+  | STATS/CSE 780
+  | Assignment 2
+author: "Pao Zhu Vivian Hsu (Student Number: 400547994)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: pdf
+editor: visual
+execute:
+  echo: false
+  warning: false
+  error: false
+header-includes:
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+bibliography: A2.bib
+csl: https://www.zotero.org/styles/apa-single-spaced
+nocite: |
+  @xie2020r
+fontsize: 11pt
+geometry: 
+  - margin = 1in
+linestretch: 1.5
+---
+
+\newpage
+
+```{r setup}
+# ----- LOAD PACKAGES AND DATA ----- #
+
+library(tidyverse)
+library(ggplot2)
+library(class)
+
+bankRaw <- read.csv("Churn_Modelling.csv")
+
+```
+
+```{r cleaning}
+# ----- DATA CLEANSING ----- #
+
+# Check for missing values
+sapply(bankRaw, function(x) sum(is.na(x))) # null values
+sapply(bankRaw, function(x) sum(x == "")) # blank values
+
+# Clean data
+bankWithDef <- bankRaw %>%
+  select(-c("RowNumber", "CustomerId", "Surname")) %>% # not needed for analysis
+  mutate(Geography_Unclass = unclass(as.factor(Geography)),
+         Gender_Unclass = unclass(as.factor(Gender)),
+         Age = replace_na(Age, round(mean(Age,na.rm=TRUE),0)), # impute with mean
+         HasCrCard = replace_na(HasCrCard, round(mean(HasCrCard,na.rm=TRUE),0)), # impute with mean
+         IsActiveMember = replace_na(IsActiveMember, round(mean(IsActiveMember,na.rm=TRUE),0)) # impute with mean
+         )
+
+# Remove
+bank <- bankWithDef %>% 
+  select(-c("Gender", "Geography")) %>% 
+  rename(Gender = Gender_Unclass, Geography = Geography_Unclass)
+
+```
+
+
+```{r visuals}
+# ----- DATA EXPLORATION ----- #
+nrow(bank)
+ncol(bank)
+
+# ----- DATA VISUALIZATION  ----- #
+
+```
+
+```{r split}
+# ----- SPLIT INTO TRAIN & TEST DATA ----- #
+
+set.seed(123456789)
+train_index <- sample(1:nrow(bank), round(nrow(bank)/2, 0), replace = FALSE)
+train_data <- bank[train_index, ]
+train_exit <- pull(train_data, Exited) 
+
+test_data <- bank[-train_index, ]
+
+```
+
+```{r knn-class}
+# ----- K-NEAREST NEIGHBOUR CLASSIFICATION ----- #
+
+set.seed(123456789)
+bank_knn_1 <- knn(train=train_data, test=test_data, cl=train_exit, k=2) 
+
+table(bank_knn_1, train_exit)
+mean(bank_knn_1 == train_exit) # percent of churn correctly predicted
+
+```
+
+```{r knn-reg}
+# ----- LOGISTIC REGRESSION ----- #
+
+set.seed(123456789)
+
+# Include all variables as predictors in the regression
+bank_reg_1 <- glm(Exited ~ ., family = binomial("logit"), data = train_data)
+summary(bank_reg_1)
+
+# Remove predictors with p-values that are not significant (i.e. > 0.05)
+bank_reg_2 <- update(bank_reg_1, ~ . -CreditScore -Tenure -NumOfProducts 
+                     -HasCrCard -EstimatedSalary -Geography)
+summary(bank_reg_2)
+
+```
+
+
+
+
+## Introduction
+
+This dataset was sourced from .
+KNN classification goal: Predict if the customer will churn (yes or no)
+KNN regression goal: Predict the customer's tenure
+- filter for out some columns because there is no description about what they mean
+
+## Methods
+
+
+
+## Results
+
+
+
+## Discussion
+
+
+
+\newpage
+
+## Supplementary material
+
+```{r code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+\newpage
+
+## References
+
+::: {#refs}
+:::
