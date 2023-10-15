@@ -28,11 +28,14 @@ linestretch: 1.5
 ```{r setup}
 # ----- LOAD PACKAGES AND DATA ----- #
 
+library(dplyr)
 library(tidyverse)
 library(ggplot2)
 library(class)
+library(pROC)
 
 bankRaw <- read.csv("Churn_Modelling.csv")
+
 
 ```
 
@@ -58,6 +61,7 @@ bank <- bankWithDef %>%
   select(-c("Gender", "Geography")) %>% 
   rename(Gender = Gender_Unclass, Geography = Geography_Unclass)
 
+
 ```
 
 
@@ -66,49 +70,101 @@ bank <- bankWithDef %>%
 nrow(bank)
 ncol(bank)
 
+
 # ----- DATA VISUALIZATION  ----- #
+
 
 ```
 
 ```{r split}
 # ----- SPLIT INTO TRAIN & TEST DATA ----- #
 
-set.seed(123456789)
+set.seed(2023780)
 train_index <- sample(1:nrow(bank), round(nrow(bank)/2, 0), replace = FALSE)
-train_data <- bank[train_index, ]
-train_exit <- pull(train_data, Exited) 
 
+# Training set
+train_data <- bank[train_index, ]
+train_x <- dplyr::select(train_data, -Exited)
+train_y <- dplyr::pull(train_data, Exited)
+
+# Testing set
 test_data <- bank[-train_index, ]
+test_x <- dplyr::select(test_data, -Exited)
+test_y <- dplyr::pull(test_data, Exited)
+
+
+```
+
+```{r log-reg}
+# ----- LOGISTIC REGRESSION ----- #
+
+set.seed(2023780)
+
+# Include all variables as predictors in the regression
+log_mod1 <- glm(Exited ~ ., family = binomial("logit"), data = train_data)
+summary(log_mod1)
+
+# Remove predictors with p-values that are not significant (i.e. > 0.05)
+log_mod1 <- update(log_mod1, ~ . -CreditScore -Tenure -NumOfProducts 
+                   -HasCrCard -EstimatedSalary -Geography)
+summary(log_mod1)
+
+# Predict outcome using test set
+log_mod1_y_prob <- predict(log_mod1, newdata = test_data, type = "response") # y probabilities
+
 
 ```
 
 ```{r knn-class}
 # ----- K-NEAREST NEIGHBOUR CLASSIFICATION ----- #
 
-set.seed(123456789)
-bank_knn_1 <- knn(train=train_data, test=test_data, cl=train_exit, k=2) 
+set.seed(2023780)
 
-table(bank_knn_1, train_exit)
-mean(bank_knn_1 == train_exit) # percent of churn correctly predicted
+# Develop KNN model and predict outcome using test set
+knn_mod1_y <- knn(train=train_x, test=test_x, cl=train_y, k=2) 
 
-```
-
-```{r knn-reg}
-# ----- LOGISTIC REGRESSION ----- #
-
-set.seed(123456789)
-
-# Include all variables as predictors in the regression
-bank_reg_1 <- glm(Exited ~ ., family = binomial("logit"), data = train_data)
-summary(bank_reg_1)
-
-# Remove predictors with p-values that are not significant (i.e. > 0.05)
-bank_reg_2 <- update(bank_reg_1, ~ . -CreditScore -Tenure -NumOfProducts 
-                     -HasCrCard -EstimatedSalary -Geography)
-summary(bank_reg_2)
 
 ```
 
+```{r performance}
+# ----- CLASSIFIER PERFORMANCE ----- #
+
+# --- LOGISTIC REGRESSION MODEL PERFORMANCE --- #
+# Find the optimal cut-off value using ROC curve
+pROC_graph <- roc(test_y, log_mod1_y_prob, smoothed = TRUE, ci=TRUE, ci.alpha=0.9, 
+                  plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
+                  print.auc=TRUE, show.thres=TRUE)
+cutoff <- coords(pROC_graph, "best")$threshold
+
+# Assign labels to prediction results using cut-off value
+log_mod1_y <- ifelse(log_mod1_y_prob > cutoff, 1, 0)
+
+# Stats on model performance
+log_mod1_cmatrix <- table(log_mod1_y, test_y) # Confusion matrix
+log_mod1_cmatrix
+mean(log_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
+mean(log_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
+log_mod1_cmatrix[2,2]/sum(log_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
+log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+
+# --- KNN MODEL PERFORMANCE --- #
+# Stats on model performance
+knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # confusion matrix
+knn_mod1_cmatrix
+mean(knn_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
+mean(knn_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
+knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
+knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+
+```
+
+```{r ridge-reg}
+# ----- LOGISTIC REGRESSION WITH SHRINKAGE ----- #
+
+set.seed(2023780)
+
+
+```
 
 
 
