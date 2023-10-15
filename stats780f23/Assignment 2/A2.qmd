@@ -131,10 +131,10 @@ knn_mod1_y <- knn(train=train_x, test=test_x, cl=train_y, k=2)
 
 # --- LOGISTIC REGRESSION MODEL PERFORMANCE --- #
 # Find the optimal cut-off value using ROC curve
-pROC_graph <- roc(test_y, log_mod1_y_prob, smoothed = TRUE, ci=TRUE, ci.alpha=0.9, 
-                  plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
-                  print.auc=TRUE, show.thres=TRUE)
-cutoff <- coords(pROC_graph, "best")$threshold
+log_mod1_pROC <- roc(test_y, log_mod1_y_prob, smoothed = TRUE, ci=TRUE, ci.alpha=0.9, 
+                     plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
+                     print.auc=TRUE, show.thres=TRUE)
+cutoff <- coords(log_mod1_pROC, "best")$threshold
 
 # Assign labels to prediction results using cut-off value
 log_mod1_y <- ifelse(log_mod1_y_prob > cutoff, 1, 0)
@@ -149,12 +149,13 @@ log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity (% correctly predi
 
 # --- KNN MODEL PERFORMANCE --- #
 # Stats on model performance
-knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # confusion matrix
+knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # Confusion matrix
 knn_mod1_cmatrix
 mean(knn_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
 mean(knn_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
 knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
 knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+
 
 ```
 
@@ -170,10 +171,7 @@ set.seed(2023780)
 
 ## Introduction
 
-This dataset was sourced from .
-KNN classification goal: Predict if the customer will churn (yes or no)
-KNN regression goal: Predict the customer's tenure
-- filter for out some columns because there is no description about what they mean
+The goal of this study is to predict customer churn at a bank. The data was downloaded from Kaggle [@bankData], which originally consisted of `r ncol(bankRaw)` variables and `r nrow(bankRaw)` rows of data related to customer churn and details about the customer such as age, bank balance, gender, and more. A binary variable indicating whether a customer churned or not was used as the response variable. Row numbers, customer ids, and surnames were removed from the dataset because they are not important for the purpose of classification. Based on Harrell's 1:15 rule of choosing predictor variables with respect to sample size [-@Harrell], the remaining 10 variables were used as predictor variables for classification. A full description of each variable along with their data types can be found in the Supplementary Materials section.
 
 ## Methods
 
@@ -191,6 +189,9 @@ KNN regression goal: Predict the customer's tenure
 
 ## Supplementary material
 
+### Data Description
+
+### Code
 ```{r code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```
 
