@@ -28,12 +28,15 @@ linestretch: 1.5
 ```{r setup}
 # ----- LOAD PACKAGES AND DATA ----- #
 
+library(knitr)
 library(dplyr)
 library(tidyverse)
 library(DescTools)
 library(ggplot2)
+library(corrplot)
 library(class)
 library(pROC)
+
 
 bank_raw <- read.csv("Churn_Modelling.csv")
 
@@ -94,6 +97,12 @@ bank <- bank_raw %>%
 
 ```{r visuals}
 # ----- DATA VISUALIZATION  ----- #
+# Create bar charts for categorical variables
+ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge")
+ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge")
+ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge")
+ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge")
+
 # Create a boxplot for each continuous variable 
 ggplot(bank, aes(x = Exited, y = CreditScore)) + geom_boxplot()
 ggplot(bank, aes(x = Exited, y = Age)) + geom_boxplot()
@@ -102,15 +111,9 @@ ggplot(bank, aes(x = Exited, y = Balance)) + geom_boxplot()
 ggplot(bank, aes(x = Exited, y = NumOfProducts)) + geom_boxplot()
 ggplot(bank, aes(x = Exited, y = EstimatedSalary)) + geom_boxplot()
 
-# Create bar charts for categorical variables
-ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge")
-
-# Check if there's correlation between variables
-corr_matrix <- round(cor(bank %>% dplyr::select(-1, -2, -11)), 3)
-ggcorrplot(corr_matrix, hc.order = TRUE, lab = TRUE)
+# Check for correlation between continuous variables
+corr_matrix <- cor(bank %>% dplyr::select(-Geography, -Gender, -HasCrCard, -IsActiveMember, -Exited))
+corrplot(round(corr_matrix,2), method = "number")
 
 
 ```
@@ -181,21 +184,26 @@ log_mod1_y <- ifelse(log_mod1_y_prob > cutoff, 1, 0)
 
 # Stats on model performance
 log_mod1_cmatrix <- table(log_mod1_y, test_y) # Confusion matrix
-log_mod1_cmatrix
-mean(log_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
-mean(log_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
-log_mod1_cmatrix[2,2]/sum(log_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
-log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+log_mod1_mcerate <- mean(log_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
+log_mod1_accuracy <- mean(log_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
+log_mod1_sensitivity <- log_mod1_cmatrix[2,2]/sum(log_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
+log_mod1_specificity <- log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+log_mod1_stats <- c(log_mod1_mcerate, log_mod1_accuracy, log_mod1_sensitivity, log_mod1_specificity)
 
 # --- KNN MODEL PERFORMANCE --- #
 # Stats on model performance
 knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # Confusion matrix
-knn_mod1_cmatrix
-mean(knn_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
-mean(knn_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
-knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
-knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+knn_mod1_mcerate <- mean(knn_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
+knn_mod1_accuracy <- mean(knn_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
+knn_mod1_sensitivity <- knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
+knn_mod1_specificity <- knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
+knn_mod1_stats <- c(knn_mod1_mcerate, knn_mod1_accuracy, knn_mod1_sensitivity, knn_mod1_specificity)
 
+# --- COMPARE MODELS --- #
+comparison <- data.frame(row.names = c("Miss-classification error rate", "Accuracy", "Sensitivity", "Specificity"),
+                         "knn" = round(knn_mod1_stats, 2),
+                         "logistic_regression" = round(log_mod1_stats, 2))
+kable(comparison)
 
 ```
 
