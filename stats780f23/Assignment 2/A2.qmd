@@ -25,55 +25,43 @@ linestretch: 1.5
 
 \newpage
 
-```{r setup}
+```{r setup, output=FALSE}
 # ----- LOAD PACKAGES AND DATA ----- #
-
-library(knitr)
-library(dplyr)
-library(tidyverse)
-library(DescTools)
-library(ggplot2)
-library(corrplot)
-library(class)
-library(pROC)
-
-
+packages <- c("knitr", "dplyr", "tidyverse", "DescTools", "ggplot2", "corrplot",
+              "class", "pROC", "glmnet", "caret")
+lapply(packages, library, character.only = TRUE)
 bank_raw <- read.csv("Churn_Modelling.csv")
 
 
 ```
 
-```{r exp-clean}
+```{r exploration-1, output=FALSE}
 # ----- DATA EXPLORATION ----- #
+# Check data types, min, max, and missing data
+data_type <- sapply(bank_raw,class)
+min <- sapply(bank_raw, function(col){min(col,na.rm=TRUE)})
+max <- sapply(bank_raw, function(col){max(col,na.rm=TRUE)})
+nulls <- sapply(bank_raw, function(col){sum(is.na(col))})
+blanks <- sapply(bank_raw, 
+                 function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
+data_summary <- data.frame(row.names = names(nulls), data_type=data_type, 
+                           min=min, max=max, nulls=nulls, blanks=blanks)
+kable(data_summary)
 
-# Check dimensions of data
-dim(bank_raw)
+```
+```{r exploration-2, output=FALSE}
+# Check dimensions and reason for numeric Age
+dim(bank_raw) # There are duplicate rows
+bank_raw$Age[round(bank_raw$Age) != bank_raw$Age] # There are decimals
 
-# Check data types to see if they make logical sense
-lapply(bank_raw,class)
-bank_raw$Age[round(bank_raw$Age) != bank_raw$Age] # There are ages that are decimals
+```
 
-# Check for outliers / data that doesn't make sense logically
-min(bank_raw$Age, na.rm = TRUE)
-min(bank_raw$Tenure, na.rm = TRUE)
-min(bank_raw$NumOfProducts, na.rm = TRUE)
-min(bank_raw$EstimatedSalary, na.rm = TRUE)
-max(bank_raw$Age, na.rm = TRUE)
-max(bank_raw$Tenure, na.rm = TRUE)
-max(bank_raw$NumOfProducts, na.rm = TRUE)
-max(bank_raw$EstimatedSalary, na.rm = TRUE)
-
-# Check for missing values
-sapply(bank_raw, function(col){sum(is.na(col))}) # Null values
-sapply(bank_raw, function(col){sum(col == "")}) # Blank values
-
-
-# ----- CLEAN DATA ----- #
-
+```{r cleansing}
+# ----- CLEANSE DATA ----- #
 bank <- bank_raw %>%
   
   # Remove columns that are not important for analysis
-  select(-c("RowNumber", "CustomerId", "Surname")) %>%
+  dplyr::select(-c("RowNumber", "CustomerId", "Surname")) %>%
   
   # Impute missing values with mean, median, and mode
   mutate(Age = replace_na(Age, round(mean(Age,na.rm=TRUE),0)),
@@ -91,28 +79,59 @@ bank <- bank_raw %>%
          Exited = as.factor(Exited)
          )
 
+# Remove duplicated rows
+bank <- bank[!duplicated(bank), ]
 
 ```
 
-
-```{r visuals}
+```{r barchart-1, output=FALSE}
 # ----- DATA VISUALIZATION  ----- #
 # Create bar charts for categorical variables
-ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge")
-ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge")
+ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge") +
+  labs(y = "Count", x = "Has Credit Card")
+```
+```{r barchart-2, output=FALSE}
+ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count", x = "Is Active Member")
+```
+```{r barchart-3, output=FALSE}
+ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count")
+```
+```{r barchart-4, output=FALSE}
+ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count")
 
+```
+
+```{r boxplot-1, output=FALSE}
 # Create a boxplot for each continuous variable 
-ggplot(bank, aes(x = Exited, y = CreditScore)) + geom_boxplot()
+ggplot(bank, aes(x = Exited, y = CreditScore)) + geom_boxplot() + ylab("Credit Score")
+```
+```{r boxplot-2, output=FALSE}
 ggplot(bank, aes(x = Exited, y = Age)) + geom_boxplot()
+```
+```{r boxplot-3, output=FALSE}
 ggplot(bank, aes(x = Exited, y = Tenure)) + geom_boxplot()
+```
+```{r boxplot-4, output=FALSE}
 ggplot(bank, aes(x = Exited, y = Balance)) + geom_boxplot()
-ggplot(bank, aes(x = Exited, y = NumOfProducts)) + geom_boxplot()
-ggplot(bank, aes(x = Exited, y = EstimatedSalary)) + geom_boxplot()
+```
+```{r boxplot-5, output=FALSE}
+ggplot(bank, aes(x = Exited, y = NumOfProducts)) + geom_boxplot() + 
+  ylab("Number of Products")
+```
+```{r boxplot-6, output=FALSE}
+ggplot(bank, aes(x = Exited, y = EstimatedSalary)) + geom_boxplot() + 
+  ylab("Estimated Salary")
 
+
+```
+
+```{r corrplot, output=FALSE}
 # Check for correlation between continuous variables
-corr_matrix <- cor(bank %>% dplyr::select(-Geography, -Gender, -HasCrCard, -IsActiveMember, -Exited))
+corr_matrix <- cor(bank %>% dplyr::select(-Geography, -Gender, -HasCrCard, 
+                                          -IsActiveMember, -Exited))
 corrplot(round(corr_matrix,2), method = "number")
 
 
@@ -120,8 +139,8 @@ corrplot(round(corr_matrix,2), method = "number")
 
 ```{r split}
 # ----- SPLIT INTO TRAIN & TEST DATA ----- #
-
 set.seed(2023780)
+
 train_index <- sample(1:nrow(bank), round(nrow(bank)/2, 0), replace = FALSE)
 
 # Training set
@@ -137,43 +156,29 @@ test_y <- dplyr::pull(test_data, Exited)
 
 ```
 
-```{r log-reg}
+```{r log-reg-1, output=FALSE}
 # ----- LOGISTIC REGRESSION ----- #
-
 set.seed(2023780)
 
 # Include all variables as predictors in the regression
-log_mod1 <- glm(Exited ~ .,
-                family = binomial("logit"), data = train_data)
-summary(log_mod1)
+log_mod0 <- glm(Exited ~ ., family = binomial("logit"), data = train_data)
+summary(log_mod0)
+
+```
+```{r log-reg-2, output=FALSE}
+set.seed(2023780)
 
 # Remove predictors with p-values that are not significant (i.e. > 0.05)
-log_mod1 <- update(log_mod1, ~ . -CreditScore -Tenure -NumOfProducts 
+log_mod1 <- update(log_mod0, ~ . -CreditScore -Tenure -NumOfProducts 
                    -HasCrCard -EstimatedSalary -Geography)
 summary(log_mod1)
 
-# Predict outcome using test set
-log_mod1_y_prob <- predict(log_mod1, newdata = test_data, type = "response") # y probabilities
-
-
 ```
+```{r log-reg-3, output=FALSE}
+# Predict outcome probabilities using test set
+log_mod1_y_prob <- predict(log_mod1, newdata = test_data, type = "response")
 
-```{r knn-class}
-# ----- K-NEAREST NEIGHBOUR CLASSIFICATION ----- #
-
-set.seed(2023780)
-
-# Develop KNN model and predict outcome using test set
-knn_mod1_y <- knn(train=train_x, test=test_x, cl=train_y, k=2) 
-
-
-```
-
-```{r performance}
-# ----- CLASSIFIER PERFORMANCE ----- #
-
-# --- LOGISTIC REGRESSION MODEL PERFORMANCE --- #
-# Find the optimal cut-off value using ROC curve
+# To label the outcomes, find the optimal cut-off value using ROC curve
 log_mod1_pROC <- roc(test_y, log_mod1_y_prob, smoothed = TRUE, ci=TRUE, ci.alpha=0.9, 
                      plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
                      print.auc=TRUE, show.thres=TRUE)
@@ -182,36 +187,54 @@ cutoff <- coords(log_mod1_pROC, "best")$threshold
 # Assign labels to prediction results using cut-off value
 log_mod1_y <- ifelse(log_mod1_y_prob > cutoff, 1, 0)
 
-# Stats on model performance
-log_mod1_cmatrix <- table(log_mod1_y, test_y) # Confusion matrix
-log_mod1_mcerate <- mean(log_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
-log_mod1_accuracy <- mean(log_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
-log_mod1_sensitivity <- log_mod1_cmatrix[2,2]/sum(log_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
-log_mod1_specificity <- log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
-log_mod1_stats <- c(log_mod1_mcerate, log_mod1_accuracy, log_mod1_sensitivity, log_mod1_specificity)
+```
 
-# --- KNN MODEL PERFORMANCE --- #
-# Stats on model performance
-knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # Confusion matrix
-knn_mod1_mcerate <- mean(knn_mod1_y != test_y) # Miss-classification error rate (% of churn incorrectly predicted)
-knn_mod1_accuracy <- mean(knn_mod1_y == test_y) # Accuracy (% of churn correctly predicted)
-knn_mod1_sensitivity <- knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity (% correctly predicted as churned)
-knn_mod1_specificity <- knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity (% correctly predicted as not churned)
-knn_mod1_stats <- c(knn_mod1_mcerate, knn_mod1_accuracy, knn_mod1_sensitivity, knn_mod1_specificity)
+```{r knn-class}
+# ----- K-NEAREST NEIGHBOUR CLASSIFICATION ----- #
+set.seed(2023780)
 
-# --- COMPARE MODELS --- #
-comparison <- data.frame(row.names = c("Miss-classification error rate", "Accuracy", "Sensitivity", "Specificity"),
-                         "knn" = round(knn_mod1_stats, 2),
-                         "logistic_regression" = round(log_mod1_stats, 2))
-kable(comparison)
+# Find optimal k value using k-fold cross validation and build the KNN model
+knn_ctrl <- trainControl(method = "repeatedcv", number = 15, repeats = 3)
+knn_mod1 <- train(Exited ~ ., data = train_data, method = "knn", trControl=knn_ctrl,
+                 preProcess = c("center", "scale"))
+
+# Predict outcome using test set
+knn_mod1_y <- predict(knn_mod1, newdata = test_data)
+
 
 ```
 
-```{r ridge-reg}
-# ----- LOGISTIC REGRESSION WITH SHRINKAGE ----- #
+```{r performance, output=FALSE}
+# ----- CLASSIFIER PERFORMANCE ----- #
+# Miss-classification error rate: % of churn incorrectly predicted
+# Accuracy: % of churn correctly predicted
+# Sensitivity: % correctly predicted as churned
+# Specificity: % correctly predicted as not churned
 
-set.seed(2023780)
+# --- LOGISTIC REGRESSION MODEL PERFORMANCE --- #
+log_mod1_cmatrix <- table(log_mod1_y, test_y) # Confusion matrix
+log_mod1_mcerate <- mean(log_mod1_y != test_y) # Miss-classification error rate
+log_mod1_accuracy <- mean(log_mod1_y == test_y) # Accuracy
+log_mod1_sensitivity <- log_mod1_cmatrix[2,2]/sum(log_mod1_cmatrix[2,]) # Sensitivity
+log_mod1_specificity <- log_mod1_cmatrix[1,1]/sum(log_mod1_cmatrix[1,]) # Specificity
+log_mod1_stats <- c(log_mod1_mcerate, log_mod1_accuracy, log_mod1_sensitivity, 
+                    log_mod1_specificity)
 
+# --- KNN MODEL PERFORMANCE --- #
+knn_mod1_cmatrix <- table(knn_mod1_y, test_y) # Confusion matrix
+knn_mod1_mcerate <- mean(knn_mod1_y != test_y) # Miss-classification error rate
+knn_mod1_accuracy <- mean(knn_mod1_y == test_y) # Accuracy
+knn_mod1_sensitivity <- knn_mod1_cmatrix[2,2]/sum(knn_mod1_cmatrix[2,]) # Sensitivity
+knn_mod1_specificity <- knn_mod1_cmatrix[1,1]/sum(knn_mod1_cmatrix[1,]) # Specificity
+knn_mod1_stats <- c(knn_mod1_mcerate, knn_mod1_accuracy, knn_mod1_sensitivity, 
+                    knn_mod1_specificity)
+
+# --- COMPARE MODELS --- #
+comparison <- data.frame(row.names = c("Miss-classification error rate", "Accuracy", 
+                                       "Sensitivity", "Specificity"),
+                         "knn" = round(knn_mod1_stats, 2),
+                         "logistic_regression" = round(log_mod1_stats, 2))
+kable(comparison)
 
 ```
 
@@ -219,19 +242,25 @@ set.seed(2023780)
 
 ## Introduction
 
-The goal of this study is to predict customer churn at a bank. 
+The goal of this study is to develop a model that predicts customer churn for a bank. Logistic regression and K-nearest neighbour (KNN) classification models were built. Both models showed that X is an important predictor of churn. A comparison of accuracy rates showed that the KNN model is a stronger fit than the logistic model.
 
 ## Methods
 
-Data involving a bank's customers and churn was downloaded from Kaggle [@bankData]. The original data set consisted of 14 variables and about 10,000 rows of observations. This data was selected because it includes a binary variable indicating customer churn status that is suitable for the purpose of logistic regression and K-nearest neighbour classification. It also contained a variety of variables describing the customer such as estimated salary, age, bank balance, and more. Row numbers, customer ids, and surnames were removed from the data set because they are not important for the purpose of studying customer churn. Based on Harrell's 1:15 rule of choosing predictor variables with respect to sample size [-@Harrell], the remaining 10 variables were used as predictor variables for classification. A full description of each variable along with their data types can be found in the Supplementary Materials section [@bankData].
+The data for this study was downloaded from Kaggle, but was originally sourced from an archived data set from the UCI Machine Learning Repository [-@bankData]. It consists of `r ncol(bank_raw)` variables and `r nrow(bank_raw)` observations including a binary indicator of customer churn (i.e. exited status) and a variety of columns describing the customer, such as age, bank balance, and estimated salary. The presence of a categorical churn variable makes the data suitable for logistic regression and KNN classification. 
 
+Prior to modelling, the data quality was validated by checking for duplicated rows, missing data, unexpected data ranges, and data type concerns (see @fig-stat-summary in Supplementary Materials). Data was cleansed to remove these issues. Bar charts of categorical variables and box plots of continuous variables were created to highlight differences between customers who have exited compared to those who have not (see @fig-boxplots and @fig-barcharts in Supplementary Materials). The boxplot of age versus churn status showed that there were potential outliers in the data in terms of age. These data points were not removed since the maximum age in the data set is `r max(bank$Age, na.rm=TRUE)` does not seem unreasonably large from a practical perspective. Additionally, row numbers, customer ids, and surnames were removed from the data set as they are not important for studying customer churn. The remaining 10 variables were used as predictors for classification.
+
+First, a logistic regression model of binomial family with a logit link was built. Based on Harrell's 1:15 rule of thumb for the number of predictor variables compared to observations in genearlized linear models [-@Harrell], all 10 variables were included in the model.
+
+Next, KNN classification was used to create another model to predict customer churn. The final model was fit using k=`r knn_mod1$bestTune` nearest neighbours. This value of k was determined using k-fold cross validation.
 
 
 ## Results
+```{r fig-performance, ref.label="performance", output=TRUE, message=FALSE, fig.cap="Model performance comparison"}
+```
 
 
-
-## Discussion
+## Conclusion
 
 
 
@@ -239,10 +268,51 @@ Data involving a bank's customers and churn was downloaded from Kaggle [@bankDat
 
 ## Supplementary material
 
-### Data Description
+### Figures
+```{r fig-stat-summary, ref.label="exploration-1", output=TRUE, message=FALSE, fig.cap="Summary of original Kaggle data used for data quality validation"}
+```
+
+::: {#fig-boxplots layout-ncol=2}
+```{r fig-boxplot-1, ref.label="boxplot-1", output=TRUE, message=FALSE}
+```
+```{r fig-boxplot-2, ref.label="boxplot-2", output=TRUE, message=FALSE}
+```
+```{r fig-boxplot-3, ref.label="boxplot-3", output=TRUE, message=FALSE}
+```
+```{r fig-boxplot-4, ref.label="boxplot-4", output=TRUE, message=FALSE}
+```
+```{r fig-boxplot-4, ref.label="boxplot-5", output=TRUE, message=FALSE}
+```
+```{r fig-boxplot-4, ref.label="boxplot-6", output=TRUE, message=FALSE}
+```
+Boxplots of continuous variables
+:::
+
+::: {#fig-barcharts layout-ncol=2}
+```{r fig-barchart-1, ref.label="barchart-1", output=TRUE, message=FALSE}
+```
+```{r fig-barchart-2, ref.label="barchart-2", output=TRUE, message=FALSE}
+```
+```{r fig-barchart-3, ref.label="barchart-3", output=TRUE, message=FALSE}
+```
+```{r fig-barchart-4, ref.label="barchart-4", output=TRUE, message=FALSE}
+```
+Bar charts of categorical variables
+:::
+
+```{r fig-corrplot, ref.label="corrplot", output=TRUE, message=FALSE, fig.cap="Correlation between continuous variables"}
+```
+
+```{r fig-reg, ref.label="log-reg-2", output=TRUE, message=FALSE, fig.cap="Final logistic regression model"}
+```
+
+```{r fig-reg, ref.label="log-reg-3", output=TRUE, message=FALSE, fig.cap="ROC curve"}
+```
+
+
 
 ### Code
-```{r code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```{r code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, size=11}
 ```
 
 \newpage
