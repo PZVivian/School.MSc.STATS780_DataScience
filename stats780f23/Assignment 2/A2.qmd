@@ -262,7 +262,7 @@ Once the data was cleaned, it was randomly split into two equal parts for traini
 
 ## Results
 
-The most important variable in the logistic model is the customer's active status in the bank. Its regression coefficient is `r round(as.numeric(coef(log_mod1)[7]), 2)`, which suggests that active members are exp(`r round(as.numeric(coef(log_mod1)[7]), 2)`)=`r round((1-exp(as.numeric(coef(log_mod1)[7])))*100, 2)`% less likely to churn compared to inactive members. The most important variable cannot be determined from a KNN classification model because the algorithm does not indicate the importance of variables unlike regression.
+The most important variable in the logistic model is the customer's active status in the bank. Its regression coefficient is `r round(as.numeric(coef(log_mod1)[7]), 2)`, which suggests that active members are exp(`r round(as.numeric(coef(log_mod1)[7]), 2)`)=`r round((1-exp(as.numeric(coef(log_mod1)[7])))*100, 2)`% less likely to churn compared to inactive members. Since KNN classification does not indicate the importance of variables, further investigation may be required to obtain the most important predictor for the KNN model.
 
 @fig-performance below shows a comparison of the two models after being tested with the hold-out set. The sensitivity is over 20% higher for the KNN model than the logistic regression model. On the other hand, the specificity is about 5% lower for the KNN model than the logistic regression model. Overall, the KNN classification model performed better than the logistic regression model since the miss-classification rate is lower and accuracy is higher than logistic regression model.
 
@@ -271,10 +271,12 @@ The most important variable in the logistic model is the customer's active statu
 
 
 ## Conclusion
-- KNN model is better
-- important predictors
-- ways to apply results to real world
-- suggestions for future models and improvement
+
+This study developed two models to predict customer churn at a bank. While the two models vary in accuracy, the bank can use them in different ways to improve customer churn rates.
+
+The KNN model has a stronger accuracy rate than the logistic regression model and can therefore be used for prediction. The bank can use this model to predict what types of customers are more likely to churn at any given time and develop prevention strategies directed at these customers.
+
+Although the logistic regression model is not as accurate as the KNN model, its ability to distinguish between predictors of importance could give leaders at the bank an idea of where to target first when developing business strategies. For example, promoting continuous product usage through promotional offers or advertisement may result in more active customers and reduce churn.
 
 
 \newpage
