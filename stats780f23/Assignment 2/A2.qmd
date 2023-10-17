@@ -67,44 +67,23 @@ bank <- bank_raw %>%
   mutate(Age = replace_na(Age, round(mean(Age,na.rm=TRUE),0)),
          HasCrCard = replace_na(HasCrCard, median(HasCrCard,na.rm=TRUE)),
          IsActiveMember = replace_na(IsActiveMember, median(HasCrCard,na.rm=TRUE)),
-         Geography = ifelse(Geography == "", Mode(Geography,na.rm=TRUE)[1], Geography)
-         ) %>% 
+         Geography = ifelse(Geography == "", Mode(Geography,na.rm=TRUE)[1], Geography)) %>% 
   
   # Change data types
   mutate(Age = as.integer(round(Age)),
-         Geography = unclass(as.factor(Geography)),
-         Gender = unclass(as.factor(Gender)),
+         Geography = as.factor(unclass(as.factor(Geography))),
+         Gender = as.factor(unclass(as.factor(Gender))),
          HasCrCard = as.factor(HasCrCard),
          IsActiveMember = as.factor(IsActiveMember),
-         Exited = as.factor(Exited)
-         )
+         Exited = as.factor(Exited))
 
 # Remove duplicated rows
 bank <- bank[!duplicated(bank), ]
 
 ```
 
-```{r barchart-1, output=FALSE}
-# ----- DATA VISUALIZATION  ----- #
-# Create bar charts for categorical variables
-ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge") +
-  labs(y = "Count", x = "Has Credit Card")
-```
-```{r barchart-2, output=FALSE}
-ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge") + 
-  labs(y = "Count", x = "Is Active Member")
-```
-```{r barchart-3, output=FALSE}
-ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge") + 
-  labs(y = "Count")
-```
-```{r barchart-4, output=FALSE}
-ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge") + 
-  labs(y = "Count")
-
-```
-
 ```{r boxplot-1, output=FALSE}
+# ----- DATA VISUALIZATION  ----- #
 # Create a boxplot for each continuous variable 
 ggplot(bank, aes(x = Exited, y = CreditScore)) + geom_boxplot() + ylab("Credit Score")
 ```
@@ -124,6 +103,25 @@ ggplot(bank, aes(x = Exited, y = NumOfProducts)) + geom_boxplot() +
 ```{r boxplot-6, output=FALSE}
 ggplot(bank, aes(x = Exited, y = EstimatedSalary)) + geom_boxplot() + 
   ylab("Estimated Salary")
+
+```
+
+```{r barchart-1, output=FALSE}
+# Create a bar chart for each categorical variable
+ggplot(bank, aes(x = HasCrCard, fill = Exited)) + geom_bar(position = "dodge") +
+  labs(y = "Count", x = "Has Credit Card")
+```
+```{r barchart-2, output=FALSE}
+ggplot(bank, aes(x = IsActiveMember, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count", x = "Is Active Member")
+```
+```{r barchart-3, output=FALSE}
+ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count")
+```
+```{r barchart-4, output=FALSE}
+ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge") + 
+  labs(y = "Count")
 
 
 ```
@@ -242,15 +240,17 @@ kable(comparison)
 
 ## Introduction
 
-The goal of this study is to develop a model that predicts customer churn for a bank. Logistic regression and K-nearest neighbour (KNN) classification models were built. Both models showed that X is an important predictor of churn. A comparison of accuracy rates showed that the KNN model is a stronger fit than the logistic model.
+The goal of this study is to develop a model that predicts customer churn for a bank and provide suggestions that can help the bank reduce the rate of churn. Two models were built to predict customer churn; the first was built using logistic regression and the second was built using K-nearest neighbour (KNN) classification. Both models showed that X is an important predictor of churn. A comparison of accuracy rates showed that the KNN model is a stronger fit than the logistic model.
 
 ## Methods
 
-The data for this study was downloaded from Kaggle, but was originally sourced from an archived data set from the UCI Machine Learning Repository [-@bankData]. It consists of `r ncol(bank_raw)` variables and `r nrow(bank_raw)` observations including a binary indicator of customer churn (i.e. exited status) and a variety of columns describing the customer, such as age, bank balance, and estimated salary. The presence of a categorical churn variable makes the data suitable for logistic regression and KNN classification. 
+The data for this study was downloaded from the Kaggle website [-@bankData]. It consists of `r ncol(bank_raw)` variables and `r nrow(bank_raw)` observations from a bank that operates in France, Germany, and Spain. The data set includes a binary indicator for customer churn (called "exited") and a variety of columns describing the customer, such as age, credit score, and estimated salary. The categorical churn variable makes this data suitable for logistic regression and KNN classification. 
 
-Prior to modelling, the data quality was validated by checking for duplicated rows, missing data, unexpected data ranges, and data type concerns (see @fig-stat-summary in Supplementary Materials). Data was cleansed to remove these issues. Bar charts of categorical variables and box plots of continuous variables were created to highlight differences between customers who have exited compared to those who have not (see @fig-boxplots and @fig-barcharts in Supplementary Materials). The boxplot of age versus churn status showed that there were potential outliers in the data in terms of age. These data points were not removed since the maximum age in the data set is `r max(bank$Age, na.rm=TRUE)` does not seem unreasonably large from a practical perspective. Additionally, row numbers, customer ids, and surnames were removed from the data set as they are not important for studying customer churn. The remaining 10 variables were used as predictors for classification.
+Prior to any modelling, the data was first screened for missing data, duplicate rows, unexpected data ranges, and data type issues. These issues were addressed through data imputation and transformation. A summary of the data issues is available in @fig-stat-summary in the Supplementary Materials. Additionally, row numbers, customer ids, and surnames were removed from the data set as they are not important for studying customer churn. The remaining 10 variables were used as predictors for classification.
 
-First, a logistic regression model of binomial family with a logit link was built. Based on Harrell's 1:15 rule of thumb for the number of predictor variables compared to observations in genearlized linear models [-@Harrell], all 10 variables were included in the model.
+Box plots, bar charts, and a correlation plot were created to visualize trends in the data. Of the six box plots shown in @fig-boxplots, age, balance, and number of products appeared to have the greatest impact on churn. Those who churned tend to be older, have a greater bank balance, and have less products with the bank compared to those who did not churn. The box plots for credit score, age, and number of products also show potential outliers. These outliers were not removed since these customers do not appear to be outliers for many of the other variables. Furthermore, the values for these variables do not appear to be unreasonably large or small from a practical perspective. For the bar charts in @fig-barcharts, customers who churned appeared to be slightly less active and female rather than male compared to those who did not churn. But overall, the bar charts did not appear to show any strong patterns. Finally, the correlation plot in @fig-corr showed that there was low correlation between the continuous variables.
+
+After visualization, a logistic regression model of binomial family with a logit link was built. Based on Harrell's 1:15 rule of thumb for the number of predictor variables compared to observations in generalized linear models [-@Harrell], all 10 variables were included in the model.
 
 Next, KNN classification was used to create another model to predict customer churn. The final model was fit using k=`r knn_mod1$bestTune` nearest neighbours. This value of k was determined using k-fold cross validation.
 
@@ -261,15 +261,26 @@ Next, KNN classification was used to create another model to predict customer ch
 
 
 ## Conclusion
-
+- KNN model is better
+- important predictors
+- ways to apply results to real world
+- suggestions for future models and improvement
 
 
 \newpage
 
 ## Supplementary material
+### Data definitions for categorical variables
+Here are the data definitions for categorical variables in the final data set. Definitions for the continuous variables remain the same as the original data source (@bankData).
+
+* Exited: Whether the customer has a churned or not (0 = not churned, 1 = churned)
+* Gender: The customer's gender (1 = female, 2 = male)
+* Geography: Country where the customer lives (1 = France, 2 = Germany, 3 = Spain)
+* Has credit card: Whether the customer has a credit card or not (0 = no, 1 = yes)
+* Is active member: Whether the customer is active in the bank or not (0 = no, 1 = yes)
 
 ### Figures
-```{r fig-stat-summary, ref.label="exploration-1", output=TRUE, message=FALSE, fig.cap="Summary of original Kaggle data used for data quality validation"}
+```{r fig-stat-summary, ref.label="exploration-1", output=TRUE, message=FALSE, fig.cap="Summary of the original Kaggle data used prior to cleansing", fig.height=4, fig.width=3}
 ```
 
 ::: {#fig-boxplots layout-ncol=2}
@@ -281,9 +292,9 @@ Next, KNN classification was used to create another model to predict customer ch
 ```
 ```{r fig-boxplot-4, ref.label="boxplot-4", output=TRUE, message=FALSE}
 ```
-```{r fig-boxplot-4, ref.label="boxplot-5", output=TRUE, message=FALSE}
+```{r fig-boxplot-5, ref.label="boxplot-5", output=TRUE, message=FALSE}
 ```
-```{r fig-boxplot-4, ref.label="boxplot-6", output=TRUE, message=FALSE}
+```{r fig-boxplot-6, ref.label="boxplot-6", output=TRUE, message=FALSE}
 ```
 Boxplots of continuous variables
 :::
