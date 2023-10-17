@@ -138,7 +138,6 @@ corrplot(round(corr_matrix,2), method = "number")
 ```{r split}
 # ----- SPLIT INTO TRAIN & TEST DATA ----- #
 set.seed(2023780)
-
 train_index <- sample(1:nrow(bank), round(nrow(bank)/2, 0), replace = FALSE)
 
 # Training set
@@ -158,18 +157,27 @@ test_y <- dplyr::pull(test_data, Exited)
 # ----- LOGISTIC REGRESSION ----- #
 set.seed(2023780)
 
-# Include all variables as predictors in the regression
+# Include all variables as predictors in the initial model
 log_mod0 <- glm(Exited ~ ., family = binomial("logit"), data = train_data)
 summary(log_mod0)
 
+# Perform backward selection to select most significant predictors
+log_mod0 <- update(log_mod0, ~ . -HasCrCard)
+summary(log_mod0)
+log_mod0 <- update(log_mod0, ~ . -Geography)
+summary(log_mod0)
+log_mod0 <- update(log_mod0, ~ . -EstimatedSalary)
+summary(log_mod0)
+log_mod1 <- update(log_mod0, ~ . -NumOfProducts)
+summary(log_mod1)
+
 ```
 ```{r log-reg-2, output=FALSE}
-set.seed(2023780)
-
-# Remove predictors with p-values that are not significant (i.e. > 0.05)
-log_mod1 <- update(log_mod0, ~ . -CreditScore -Tenure -NumOfProducts 
-                   -HasCrCard -EstimatedSalary -Geography)
-summary(log_mod1)
+# Final model
+print(log_mod1$call)
+summary <- data.frame(round(summary(log_mod1)$coefficients, 4))
+colnames(summary) <- c("estimate", "std_error", "z_value", "pr(>|z|)")
+kable(summary)
 
 ```
 ```{r log-reg-3, output=FALSE}
@@ -189,9 +197,8 @@ log_mod1_y <- ifelse(log_mod1_y_prob > cutoff, 1, 0)
 
 ```{r knn-class}
 # ----- K-NEAREST NEIGHBOUR CLASSIFICATION ----- #
-set.seed(2023780)
-
 # Find optimal k value using k-fold cross validation and build the KNN model
+set.seed(2023780)
 knn_ctrl <- trainControl(method = "repeatedcv", number = 15, repeats = 3)
 knn_mod1 <- train(Exited ~ ., data = train_data, method = "knn", trControl=knn_ctrl,
                  preProcess = c("center", "scale"))
@@ -230,8 +237,8 @@ knn_mod1_stats <- c(knn_mod1_mcerate, knn_mod1_accuracy, knn_mod1_sensitivity,
 # --- COMPARE MODELS --- #
 comparison <- data.frame(row.names = c("Miss-classification error rate", "Accuracy", 
                                        "Sensitivity", "Specificity"),
-                         "knn" = round(knn_mod1_stats, 2),
-                         "logistic_regression" = round(log_mod1_stats, 2))
+                         "logistic_regression" = round(log_mod1_stats, 2),
+                         "knn" = round(knn_mod1_stats, 2))
 kable(comparison)
 
 ```
@@ -240,7 +247,7 @@ kable(comparison)
 
 ## Introduction
 
-The goal of this study is to develop a model that predicts customer churn for a bank and provide suggestions that can help the bank reduce the rate of churn. Two models were built to predict customer churn; the first was built using logistic regression and the second was built using K-nearest neighbour (KNN) classification. Both models showed that X is an important predictor of churn. A comparison of accuracy rates showed that the KNN model is a stronger fit than the logistic model.
+The goal of this study is to develop a model that predicts customer churn for a bank and provide suggestions that can help the bank reduce the rate of churn. Two models were built to predict customer churn; the first was built using logistic regression and the second was built using K-nearest neighbour (KNN) classification. A comparison of accuracy rates showed that the KNN model is a stronger fit than the logistic model.
 
 ## Methods
 
@@ -248,14 +255,17 @@ The data for this study was downloaded from the Kaggle website [-@bankData]. It 
 
 Prior to any modelling, the data was first screened for missing data, duplicate rows, unexpected data ranges, and data type issues. These issues were addressed through data imputation and transformation. A summary of the data issues is available in @fig-stat-summary in the Supplementary Materials. Additionally, row numbers, customer ids, and surnames were removed from the data set as they are not important for studying customer churn. The remaining 10 variables were used as predictors for classification.
 
-Box plots, bar charts, and a correlation plot were created to visualize trends in the data. Of the six box plots shown in @fig-boxplots, age, balance, and number of products appeared to have the greatest impact on churn. Those who churned tend to be older, have a greater bank balance, and have less products with the bank compared to those who did not churn. The box plots for credit score, age, and number of products also show potential outliers. These outliers were not removed since these customers do not appear to be outliers for many of the other variables. Furthermore, the values for these variables do not appear to be unreasonably large or small from a practical perspective. For the bar charts in @fig-barcharts, customers who churned appeared to be slightly less active and female rather than male compared to those who did not churn. But overall, the bar charts did not appear to show any strong patterns. Finally, the correlation plot in @fig-corr showed that there was low correlation between the continuous variables.
+Box plots, bar charts, and a correlation plot were created to visualize trends in the data. Of the six box plots shown in @fig-boxplots, age, balance, and number of products appeared to have the greatest impact on churn. Those who churned tend to be older, have a greater bank balance, and have less products with the bank compared to those who did not churn. The box plots for credit score, age, and number of products also show potential outliers. These outliers were not removed since these customers do not appear to be outliers for many of the other variables. Furthermore, the values for these variables do not appear to be unreasonably large or small from a practical perspective. For the bar charts in @fig-barcharts, customers who churned appeared to be slightly less active and female rather than male compared to those who did not churn. But overall, the bar charts did not appear to show any strong patterns. Finally, the correlation plot in @fig-corrplot showed that there was low correlation between the continuous variables.
 
-After visualization, a logistic regression model of binomial family with a logit link was built. Based on Harrell's 1:15 rule of thumb for the number of predictor variables compared to observations in generalized linear models [-@Harrell], all 10 variables were included in the model.
-
-Next, KNN classification was used to create another model to predict customer churn. The final model was fit using k=`r knn_mod1$bestTune` nearest neighbours. This value of k was determined using k-fold cross validation.
+Once the data was cleaned, it was randomly split into two equal parts for training and testing. A logistic regression model with a logit link was the first model that was built. Based on Harrell's 1:15 rule of thumb for a suitable number of predictor variables compared to observations [-@Harrell], all 10 variables were included in the model initially. The final model includes only 6 of these variables since 4 were removed with backward selection. A sensitivity and specificity analysis with an ROC curve was performed to choose the optimal cutoff value of `r round(cutoff,2)` for interpreting the predictions. A summary of the final model and the ROC curve can be found in @fig-reg and @fig-roc of the Supplementary Materials respectively. Next, KNN classification was used to create another model to predict customer churn. K-fold cross validation was used to determine a neighbourhood size of k=`r knn_mod1$bestTune`. Both models were tested using the hold-out set.
 
 
 ## Results
+
+The most important variable in the logistic model is the customer's active status in the bank. Its regression coefficient is `r round(as.numeric(coef(log_mod1)[7]), 2)`, which suggests that active members are exp(`r round(as.numeric(coef(log_mod1)[7]), 2)`)=`r round((1-exp(as.numeric(coef(log_mod1)[7])))*100, 2)`% less likely to churn compared to inactive members. The most important variable cannot be determined from a KNN classification model because the algorithm does not indicate the importance of variables unlike regression.
+
+@fig-performance below shows a comparison of the two models after being tested with the hold-out set. The sensitivity is over 20% higher for the KNN model than the logistic regression model. On the other hand, the specificity is about 5% lower for the KNN model than the logistic regression model. Overall, the KNN classification model performed better than the logistic regression model since the miss-classification rate is lower and accuracy is higher than logistic regression model.
+
 ```{r fig-performance, ref.label="performance", output=TRUE, message=FALSE, fig.cap="Model performance comparison"}
 ```
 
@@ -317,7 +327,7 @@ Bar charts of categorical variables
 ```{r fig-reg, ref.label="log-reg-2", output=TRUE, message=FALSE, fig.cap="Final logistic regression model"}
 ```
 
-```{r fig-reg, ref.label="log-reg-3", output=TRUE, message=FALSE, fig.cap="ROC curve"}
+```{r fig-roc, ref.label="log-reg-3", output=TRUE, message=FALSE, fig.cap="ROC curve"}
 ```
 
 
