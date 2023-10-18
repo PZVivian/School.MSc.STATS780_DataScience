@@ -32,7 +32,6 @@ packages <- c("knitr", "dplyr", "tidyverse", "DescTools", "ggplot2", "corrplot",
 lapply(packages, library, character.only = TRUE)
 bank_raw <- read.csv("Churn_Modelling.csv")
 
-
 ```
 
 ```{r exploration-1, output=FALSE}
@@ -59,16 +58,13 @@ bank_raw$Age[round(bank_raw$Age) != bank_raw$Age] # There are decimals
 ```{r cleansing}
 # ----- CLEANSE DATA ----- #
 bank <- bank_raw %>%
-  
   # Remove columns that are not important for analysis
   dplyr::select(-c("RowNumber", "CustomerId", "Surname")) %>%
-  
   # Impute missing values with mean, median, and mode
   mutate(Age = replace_na(Age, round(mean(Age,na.rm=TRUE),0)),
          HasCrCard = replace_na(HasCrCard, median(HasCrCard,na.rm=TRUE)),
          IsActiveMember = replace_na(IsActiveMember, median(HasCrCard,na.rm=TRUE)),
          Geography = ifelse(Geography == "", Mode(Geography,na.rm=TRUE)[1], Geography)) %>% 
-  
   # Change data types
   mutate(Age = as.integer(round(Age)),
          Geography = as.factor(unclass(as.factor(Geography))),
@@ -76,7 +72,6 @@ bank <- bank_raw %>%
          HasCrCard = as.factor(HasCrCard),
          IsActiveMember = as.factor(IsActiveMember),
          Exited = as.factor(Exited))
-
 # Remove duplicated rows
 bank <- bank[!duplicated(bank), ]
 
@@ -123,7 +118,6 @@ ggplot(bank, aes(x = Geography, fill = Exited)) + geom_bar(position = "dodge") +
 ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge") + 
   labs(y = "Count")
 
-
 ```
 
 ```{r corrplot, output=FALSE}
@@ -131,7 +125,6 @@ ggplot(bank, aes(x = Gender, fill = Exited)) + geom_bar(position = "dodge") +
 corr_matrix <- cor(bank %>% dplyr::select(-Geography, -Gender, -HasCrCard, 
                                           -IsActiveMember, -Exited))
 corrplot(round(corr_matrix,2), method = "number")
-
 
 ```
 
@@ -149,7 +142,6 @@ train_y <- dplyr::pull(train_data, Exited)
 test_data <- bank[-train_index, ]
 test_x <- dplyr::select(test_data, -Exited)
 test_y <- dplyr::pull(test_data, Exited)
-
 
 ```
 
@@ -170,11 +162,8 @@ log_mod0 <- update(log_mod0, ~ . -EstimatedSalary)
 summary(log_mod0)
 log_mod1 <- update(log_mod0, ~ . -NumOfProducts)
 summary(log_mod1)
-
 ```
 ```{r log-reg-2, output=FALSE}
-# Final model
-print(log_mod1$call)
 summary <- data.frame(round(summary(log_mod1)$coefficients, 4))
 colnames(summary) <- c("estimate", "std_error", "z_value", "pr(>|z|)")
 kable(summary)
@@ -206,16 +195,10 @@ knn_mod1 <- train(Exited ~ ., data = train_data, method = "knn", trControl=knn_c
 # Predict outcome using test set
 knn_mod1_y <- predict(knn_mod1, newdata = test_data)
 
-
 ```
 
 ```{r performance, output=FALSE}
 # ----- CLASSIFIER PERFORMANCE ----- #
-# Miss-classification error rate: % of churn incorrectly predicted
-# Accuracy: % of churn correctly predicted
-# Sensitivity: % correctly predicted as churned
-# Specificity: % correctly predicted as not churned
-
 # --- LOGISTIC REGRESSION MODEL PERFORMANCE --- #
 log_mod1_cmatrix <- table(log_mod1_y, test_y) # Confusion matrix
 log_mod1_mcerate <- mean(log_mod1_y != test_y) # Miss-classification error rate
@@ -243,6 +226,48 @@ kable(comparison)
 
 ```
 
+```{r fig-lasso-1, output=FALSE}
+# ----- LOGISTIC REGRESSION WITH SHRINKAGE ----- #
+# Format training and testing data into matrices and create lambda grid
+set.seed(2023780)
+x <- model.matrix(Exited ~ ., bank)[, -1]
+y <- dplyr::pull(bank, Exited)
+
+# Perform cross validation to find lambda
+lasso_cv <- cv.glmnet(x[train_index, ], y[train_index], family="binomial",
+                      alpha = 1, standardize = FALSE)
+
+# Predict the log of odds of being churned and convert to probabilities
+lasso_test_pred_log_odds <- predict(lasso_cv, newx = x[-train_index, ], 
+                               s = "lambda.1se")[,1]
+lasso_test_pred_prob <- exp(lasso_test_pred_log_odds)/(1+exp(lasso_test_pred_log_odds))
+df_lasso_test <- tibble(pre_prob = lasso_test_pred_prob, 
+                        y = slice(bank, -train_index) %>% pull(Exited))
+
+# Get the logistic regression model after shrinkage
+lasso_mod1 <- glmnet(x[train_index, ], y[train_index], family="binomial",
+              alpha = 1, standardize = FALSE)
+lasso_coefs <- predict(lasso_mod1, type = "coefficients", s = lasso_cv$lambda.1se)
+
+# Use an ROC curve to get the optimal cutoff
+pROC_graph <- roc(df_lasso_test$y, df_lasso_test$pre_prob, smoothed = TRUE,
+                  ci=TRUE, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, 
+                  max.auc.polygon=TRUE, grid=TRUE, print.auc=TRUE, show.thres=TRUE)
+cutoff_2 <- coords(pROC_graph, "best")$threshold
+
+# Compute the test error
+lasso_test_class <- df_lasso_test %>%
+  dplyr::mutate(class_pred = ifelse(pre_prob <= cutoff_2, levels(bank$Exited)[1], 
+                             levels(bank$Exited)[2]))
+
+# Create a confusion matrix
+tab <- table(pull(df_lasso_test, y), pull(lasso_test_class, class_pred))
+stat <- 1-sum(diag(tab))/(sum(tab))
+lasso_conf_matrix <- caret::confusionMatrix(
+  factor(lasso_test_class$class_pred), lasso_test_class$y, mode = "everything", 
+  positive="1")
+
+```
 
 
 ## Introduction
@@ -296,40 +321,40 @@ Here are the data definitions for categorical variables in the final data set. D
 ```
 
 ::: {#fig-boxplots layout-ncol=2}
-```{r fig-boxplot-1, ref.label="boxplot-1", output=TRUE, message=FALSE}
+```{r fig-boxplot-1, ref.label="boxplot-1", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-boxplot-2, ref.label="boxplot-2", output=TRUE, message=FALSE}
+```{r fig-boxplot-2, ref.label="boxplot-2", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-boxplot-3, ref.label="boxplot-3", output=TRUE, message=FALSE}
+```{r fig-boxplot-3, ref.label="boxplot-3", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-boxplot-4, ref.label="boxplot-4", output=TRUE, message=FALSE}
+```{r fig-boxplot-4, ref.label="boxplot-4", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-boxplot-5, ref.label="boxplot-5", output=TRUE, message=FALSE}
+```{r fig-boxplot-5, ref.label="boxplot-5", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-boxplot-6, ref.label="boxplot-6", output=TRUE, message=FALSE}
+```{r fig-boxplot-6, ref.label="boxplot-6", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
 Boxplots of continuous variables
 :::
 
 ::: {#fig-barcharts layout-ncol=2}
-```{r fig-barchart-1, ref.label="barchart-1", output=TRUE, message=FALSE}
+```{r fig-barchart-1, ref.label="barchart-1", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-barchart-2, ref.label="barchart-2", output=TRUE, message=FALSE}
+```{r fig-barchart-2, ref.label="barchart-2", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-barchart-3, ref.label="barchart-3", output=TRUE, message=FALSE}
+```{r fig-barchart-3, ref.label="barchart-3", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
-```{r fig-barchart-4, ref.label="barchart-4", output=TRUE, message=FALSE}
+```{r fig-barchart-4, ref.label="barchart-4", output=TRUE, message=FALSE, fig.height=2, fig.width=3}
 ```
 Bar charts of categorical variables
 :::
 
-```{r fig-corrplot, ref.label="corrplot", output=TRUE, message=FALSE, fig.cap="Correlation between continuous variables"}
+```{r fig-corrplot, ref.label="corrplot", output=TRUE, message=FALSE, fig.cap="Correlation between continuous variables", fig.height=3.5, fig.width=3.5}
 ```
 
 ```{r fig-reg, ref.label="log-reg-2", output=TRUE, message=FALSE, fig.cap="Final logistic regression model"}
 ```
 
-```{r fig-roc, ref.label="log-reg-3", output=TRUE, message=FALSE, fig.cap="ROC curve"}
+```{r fig-roc, ref.label="log-reg-3", output=TRUE, message=FALSE, fig.cap="ROC curve to determine cutoff", fig.height=3, fig.width=3}
 ```
 
 
