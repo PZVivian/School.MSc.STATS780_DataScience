@@ -230,7 +230,8 @@ kable(comparison)
 # ----- LOGISTIC REGRESSION WITH SHRINKAGE ----- #
 # Format training and testing data into matrices and create lambda grid
 set.seed(2023780)
-x <- model.matrix(Exited ~ ., bank)[, -1]
+x <- model.matrix(Exited ~ CreditScore + Gender + Age + Tenure + Balance + IsActiveMember,
+                  bank)[, -1]
 y <- dplyr::pull(bank, Exited)
 
 # Perform cross validation to find lambda
@@ -282,7 +283,9 @@ Prior to any modelling, the data was first screened for missing data, duplicate 
 
 Box plots, bar charts, and a correlation plot were created to visualize trends in the data. Of the six box plots shown in @fig-boxplots, age, balance, and number of products appeared to have the greatest impact on churn. Those who churned tend to be older, have a greater bank balance, and have less products with the bank compared to those who did not churn. The box plots for credit score, age, and number of products also show potential outliers. These outliers were not removed since these customers do not appear to be outliers for many of the other variables. Furthermore, the values for these variables do not appear to be unreasonably large or small from a practical perspective. For the bar charts in @fig-barcharts, customers who churned appeared to be slightly less active and female rather than male compared to those who did not churn. But overall, the bar charts did not appear to show any strong patterns. Finally, the correlation plot in @fig-corrplot showed that there was low correlation between the continuous variables.
 
-Once the data was cleaned, it was randomly split into two equal parts for training and testing. A logistic regression model with a logit link was the first model that was built. Based on Harrell's 1:15 rule of thumb for a suitable number of predictor variables compared to observations [-@Harrell], all 10 variables were included in the model initially. The final model includes only 6 of these variables since 4 were removed with backward selection. A sensitivity and specificity analysis with an ROC curve was performed to choose the optimal cutoff value of `r round(cutoff,2)` for interpreting the predictions. A summary of the final model and the ROC curve can be found in @fig-reg and @fig-roc of the Supplementary Materials respectively. Next, KNN classification was used to create another model to predict customer churn. K-fold cross validation was used to determine a neighbourhood size of k=`r knn_mod1$bestTune`. Both models were tested using the hold-out set.
+Once the data was cleaned, it was randomly split into two equal parts for training and testing. The first model that was built was a logistic regression model. Based on Harrell's 1:15 rule of thumb for a suitable number of predictor variables compared to observations [-@Harrell], all 10 variables were included in the model initially. The final model includes only 6 of these variables since 4 were removed with backward selection. A sensitivity and specificity analysis with an ROC curve was performed to choose the optimal cutoff value of `r round(cutoff,2)` for interpreting the predictions. A summary of the final model and the ROC curve can be found in @fig-reg and @fig-roc of the Supplementary Materials respectively. Next, KNN classification was used to create another model to predict customer churn. K-fold cross validation was used to determine a neighbourhood size of k=`r knn_mod1$bestTune`. 
+
+Both models were tested using the hold-out set and statistics on the model performance were computed and compared between the models. As a result of the comparison, shrinkage methods were applied to the logistic regression model in attempt to further improve the model. Due to the model's poor accuracy of `r round(lasso_conf_matrix$overall[1],2)` in comparison with the other two models, it was not used for any further interpretation.
 
 
 ## Results
