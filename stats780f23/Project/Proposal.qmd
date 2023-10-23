@@ -1,0 +1,60 @@
+---
+title: |
+  | STATS/CSE 780
+  | Project Proposal
+author: "Pao Zhu Vivian Hsu (Student Number: 400547994)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: pdf
+editor: visual
+execute:
+  echo: false
+  warning: false
+  error: false
+header-includes:
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+bibliography: Proposal.bib
+csl: https://www.zotero.org/styles/apa-single-spaced
+nocite: |
+  @citeR, @xie2020r
+fontsize: 11pt
+geometry: 
+  - margin = 1in
+linestretch: 1.5
+---
+
+\newpage
+
+## Introduction
+Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are linked to the disease [@factsWHO]. In this paper, we propose a study that leverages machine learning techniques to predict and prevent diabetes.
+
+The data in this proposal was originally collected by Islam et al. from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh [-@diabetesStudy] and was later openly published on Kaggle [@diabetesData]. 
+
+Islam et al.'s study also used machine learning techniques to predict diabetes. In particular, they used naive Bayes, logistic regression, and random forest techniques and found that their random forest model had the best accuracy [@diabetesData]. This study will expand on their research by validating their results through another random forest model and assessing whether a neural network would better predict results.
+
+
+## Methods
+1) decision tree with boosting/bagging/random forest
+2) clustering or GAM or neural network
+
+
+## Preliminary Analysis
+```{r setup}
+library(tidyverse)
+diabetes <- read.csv("diabetes_data.csv", sep=";")
+```
+
+```{r visualization}
+
+```
+
+
+## Timelines
+The presentation slides are aimed to be completed by November 23rd, 2023. The oral presentation will be on November 30th, 2023. The final written project will be completed by December 12, 2023.
+
+\newpage
+
+## References
+
+::: {#refs}
+:::
