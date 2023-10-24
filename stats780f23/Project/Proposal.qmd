@@ -16,7 +16,7 @@ header-includes:
 bibliography: Proposal.bib
 csl: https://www.zotero.org/styles/apa-single-spaced
 nocite: |
-  @citeR, @xie2020r
+  @citeR
 fontsize: 11pt
 geometry: 
   - margin = 1in
@@ -26,28 +26,23 @@ linestretch: 1.5
 \newpage
 
 ## Introduction
-Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are linked to the disease [@factsWHO]. In this paper, we propose a study that leverages machine learning techniques to predict and prevent diabetes.
+Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are linked to the disease [@factsWHO]. In this paper, we propose a study that leverages machine learning techniques to predict the risk and prevent the onset of diabetes.
 
-The data in this proposal was originally collected by Islam et al. from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh [-@diabetesStudy] and was later openly published on Kaggle [@diabetesData]. 
+The data in this proposal was originally collected by Islam et al. from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh [-@diabetesStudy]. It was later openly published on Kaggle [@diabetesData], where it was downloaded. 
 
-Islam et al.'s study also used machine learning techniques to predict diabetes. In particular, they used naive Bayes, logistic regression, and random forest techniques and found that their random forest model had the best accuracy [@diabetesStudy]. This study will also use machine learning techniques, but will focus on random forest and neural network methods instead.
+In Islam et al.'s study [-@diabetesStudy], machine learning techniques were used to predict diabetes risk. In particular, naive Bayes, logistic regression, and random forest techniques were applied. The study found that their random forest model had the best accuracy [@diabetesStudy]. 
+
+The study we propose will also utilize machine learning techniques, but will focus on decision tree and neural network methods instead.
 
 
 ## Methods
-The first method will be a decision tree with ensemble methods, specifically random forest. The tuning parameter is 
+As a starting point, the data will be randomly split into two equal portions as the training and testing set.
 
-The second method will be a neural network with regularization, specifically lasso. The tuning parameter is 
-We will measure the computational cost of the neural network using .
+The first machine learning method will be a decision tree. The index on the subtrees $\alpha$ will be tuned using cross-validation. Pruning will be applied to reduce the cost complexity of the tree, and random forest ensembling will be used to improve model performance.
 
--modifications, 
--tuning parameters, 
--feature engineering, 
--computational cost, interpretability of the results, reproducibility
+The second method will be a neural network. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
 
-The neural network is .
-
-After the two models are built, they will each be assessed using mis-classification rate, accuracy, specificity and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit for to predict diabetes.
-
+After the two models are built, they will each be assessed using misclassification rate, accuracy, specificity, and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit to predict diabetes.
 
 
 ## Preliminary Analysis
@@ -117,6 +112,10 @@ bplot_a1 <- as.integer(unlist(ggplot_build(bplot)$data)["ymax"])
 bplot + geom_hline(yintercept = bplot_a1, linetype="dotted", color="red") + 
   geom_text(aes(-0.4,bplot_a1,label = bplot_a1, vjust = 1.5, color="red"), 
             show.legend = FALSE)
+
+# Cap outliers
+diabetes_no_outliers <- diabetes %>% mutate(age = ifelse(age > bplot_a1, bplot_a1, age))
+
 ```
 
 ```{r barchart-1, output=FALSE}
@@ -177,16 +176,15 @@ ggplot(diabetes, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
 
 ```
 
-This section provides preliminary insight into the data set that may be useful for the proposed study.
+This section involves an exploratory analysis to provide insight on the data prior to machine learning.
 
-The data set consists of `r nrow(diabetes)` observations and `r ncol(diabetes)` attributes. Before any analysis was done, a transformation was applied to the data to ensure that all categorical variables were expressed with binary indicators so they can be easily used in the analysis. The response variable is a binary measure called class that indicates whether the patient has a positive or negative risk for diabetes. The remaining attributes describe the patient and whether they experience a selection of symptoms related to the disease, such as weakness, itching, and obesity. A full list of the attributes and their meanings are outlined in @fig-desc in the Supplementary Materials section.
+The data set consists of `r nrow(diabetes)` observations and `r ncol(diabetes)` attributes. Before any analysis was done, a transformation was applied to the data to ensure that all categorical variables were expressed with binary indicators to ease the analysis. The response variable is a binary attribute called class that indicates whether the patient has a positive or negative risk for diabetes. The remaining attributes describe the patient and if they experience common symptoms related to the disease, such as weakness, itching, and obesity. A full list of the attributes and their meanings are outlined in @fig-desc in the Supplementary Materials section.
 
-There are no missing values in this data set since missing data was already addressed by Islam et al.  after data collection [-@diabetesStudy]. To verify this, we performed a check for nulls and blanks as summarized in @fig-missing in the Supplementary Materials. 
+There are no missing values in this data set since missing data was already addressed by Islam et al. after data collection [-@diabetesStudy]. To verify this, we performed a check for nulls and blanks as summarized in @fig-missing in the Supplementary Materials. 
 
-Next, each of the individual attributes were explored. @fig-boxplot shows a box plot of patient ages. The are a few outliers that exist outside of the interquartile range. These will be capped at `r bplot_a1`, the upper bound of the range.
+Next, each of the individual attributes were explored. @fig-boxplot shows a box plot of patient ages. The median age in the population is `r as.integer(unlist(ggplot_build(bplot)$data)["middle"])`. There are a few outliers that exist outside of the interquartile range. These values will be capped at `r bplot_a1`, the upper bound of the range.
 
-
-
+@fig-barcharts shows a bar chart for each of the 16 categorical variables in the data set. There appears to be a somewhat even split between the predictor values for polyuria and itching, while the remaining predictors are not evenly split. This is especially important for the class variable because there are 200 observations with a negative diabetes risk and 300 observations with a positive risk. This suggests that if the model does not perform well, a resampling method such as cross-validation or boostrapping may help improve the model.
 
 ## Timelines
 This project will include two main components, a presentation and a written report. The presentation will occur on November 30th, 2023. Slides for the presentation will be completed by November 21, 2023. The written report will be finalized by December 11, 2023.
