@@ -30,27 +30,220 @@ Diabetes is a chronic disease that occurs when the body cannot effectively produ
 
 The data in this proposal was originally collected by Islam et al. from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh [-@diabetesStudy] and was later openly published on Kaggle [@diabetesData]. 
 
-Islam et al.'s study also used machine learning techniques to predict diabetes. In particular, they used naive Bayes, logistic regression, and random forest techniques and found that their random forest model had the best accuracy [@diabetesData]. This study will expand on their research by validating their results through another random forest model and assessing whether a neural network would better predict results.
+Islam et al.'s study also used machine learning techniques to predict diabetes. In particular, they used naive Bayes, logistic regression, and random forest techniques and found that their random forest model had the best accuracy [@diabetesStudy]. This study will also use machine learning techniques, but will focus on random forest and neural network methods instead.
 
 
 ## Methods
-1) decision tree with boosting/bagging/random forest
-2) clustering or GAM or neural network
+The first method will be a decision tree with ensemble methods, specifically random forest. The tuning parameter is 
+
+The second method will be a neural network with regularization, specifically lasso. The tuning parameter is 
+We will measure the computational cost of the neural network using .
+
+-modifications, 
+-tuning parameters, 
+-feature engineering, 
+-computational cost, interpretability of the results, reproducibility
+
+The neural network is .
+
+After the two models are built, they will each be assessed using mis-classification rate, accuracy, specificity and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit for to predict diabetes.
+
 
 
 ## Preliminary Analysis
 ```{r setup}
+library(knitr)
 library(tidyverse)
-diabetes <- read.csv("diabetes_data.csv", sep=";")
-```
-
-```{r visualization}
 
 ```
+
+
+```{r cleanse}
+# ----- DATA CLEANSING ----- #
+diabetes_raw <- read.csv("diabetes_data.csv", sep=";")
+diabetes <- diabetes_raw %>% 
+  mutate(gender = as.factor(ifelse(gender=="Male",1,
+                            ifelse(gender=="Female",0,
+                            NA))),
+         polyuria = as.factor(polyuria),
+         polydipsia = as.factor(polydipsia),
+         sudden_weight_loss = as.factor(sudden_weight_loss),
+         weakness = as.factor(weakness),
+         polyphagia = as.factor(polyphagia),
+         genital_thrush = as.factor(genital_thrush),
+         visual_blurring = as.factor(visual_blurring),
+         itching = as.factor(itching),
+         irritability = as.factor(irritability),
+         delayed_healing = as.factor(delayed_healing),
+         partial_paresis = as.factor(partial_paresis),
+         muscle_stiffness = as.factor(muscle_stiffness),
+         alopecia = as.factor(alopecia),
+         obesity = as.factor(obesity),
+         class = as.factor(class)) 
+
+```
+
+```{r exp-desc, output=FALSE}
+# ----- DATA EXPLORATION ----- #
+# Data description
+attribute <- c("Age","Gender","Polyuria","Polydipsia",
+               "Sudden weight loss","Weakness","Polyphagia",
+               "Genital thrush","Visual blurring","Itching",
+               "Irritability","Delayed healing","Partial paresis",
+               "Muscle stiffness","Alopecia","Obesity","Class")
+values <- c("In years","1 = Male, 0 = Female","1 = Yes, 0 = No","1 = Yes, 0 = No",
+            "1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No",
+            "1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No",
+            "1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No","1 = Yes, 0 = No",
+            "1 = Positive risk, 0 = Negative risk")
+data_summary <- data.frame(Attribute=attribute, Values=values)
+kable(data_summary)
+
+```
+
+```{r missing, output=FALSE}
+# Check for missing data
+nulls <- sapply(diabetes, function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
+blanks <- sapply(diabetes, function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
+kable(data.frame(Nulls=sum(nulls), Blanks=sum(blanks)))
+
+```
+
+```{r boxplot, output=FALSE}
+# Boxplot of continuous variable
+bplot <- ggplot(diabetes, aes(y = age)) + geom_boxplot() + labs(x="",y="Age") +
+  theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
+bplot_a1 <- as.integer(unlist(ggplot_build(bplot)$data)["ymax"])
+bplot + geom_hline(yintercept = bplot_a1, linetype="dotted", color="red") + 
+  geom_text(aes(-0.4,bplot_a1,label = bplot_a1, vjust = 1.5, color="red"), 
+            show.legend = FALSE)
+```
+
+```{r barchart-1, output=FALSE}
+# Barplots for each categorical variable
+ggplot(diabetes, aes(x = gender)) + geom_bar() + labs(y = "Count", x = "Gender")
+```
+```{r barchart-2, output=FALSE}
+ggplot(diabetes, aes(x = polyuria)) + geom_bar() + labs(y = "Count", x = "Polyuria")
+```
+```{r barchart-3, output=FALSE}
+ggplot(diabetes, aes(x = polydipsia)) + geom_bar() + labs(y = "Count", x = "Polydipsia")
+```
+```{r barchart-4, output=FALSE}
+ggplot(diabetes, aes(x = sudden_weight_loss)) + geom_bar() + 
+  labs(y = "Count", x = "Sudden weight loss")
+```
+```{r barchart-5, output=FALSE}
+ggplot(diabetes, aes(x = weakness)) + geom_bar() + labs(y = "Count", x = "Weakness")
+```
+```{r barchart-6, output=FALSE}
+ggplot(diabetes, aes(x = polyphagia)) + geom_bar() + labs(y = "Count", x = "Polyphagia")
+```
+```{r barchart-7, output=FALSE}
+ggplot(diabetes, aes(x = genital_thrush)) + geom_bar() + 
+  labs(y = "Count", x = "Genital thrush")
+```
+```{r barchart-8, output=FALSE}
+ggplot(diabetes, aes(x = visual_blurring)) + geom_bar() + 
+  labs(y = "Count", x = "Visual blurring")
+```
+```{r barchart-9, output=FALSE}
+ggplot(diabetes, aes(x = itching)) + geom_bar() + labs(y = "Count", x = "Itching")
+```
+```{r barchart-10, output=FALSE}
+ggplot(diabetes, aes(x = irritability)) + geom_bar() + 
+  labs(y = "Count", x = "Irritability")
+```
+```{r barchart-11, output=FALSE}
+ggplot(diabetes, aes(x = delayed_healing)) + geom_bar() + 
+  labs(y = "Count", x = "Delayed healing")
+```
+```{r barchart-12, output=FALSE}
+ggplot(diabetes, aes(x = partial_paresis)) + geom_bar() + 
+  labs(y = "Count", x = "Partial paresis")
+```
+```{r barchart-13, output=FALSE}
+ggplot(diabetes, aes(x = muscle_stiffness)) + geom_bar() + 
+  labs(y = "Count", x = "Muscle stiffness")
+```
+```{r barchart-14, output=FALSE}
+ggplot(diabetes, aes(x = alopecia)) + geom_bar() + labs(y = "Count", x = "Alopecia")
+```
+```{r barchart-15, output=FALSE}
+ggplot(diabetes, aes(x = obesity)) + geom_bar() + labs(y = "Count", x = "Obesity")
+```
+```{r barchart-16, output=FALSE}
+ggplot(diabetes, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
+
+```
+
+This section provides preliminary insight into the data set that may be useful for the proposed study.
+
+The data set consists of `r nrow(diabetes)` observations and `r ncol(diabetes)` attributes. Before any analysis was done, a transformation was applied to the data to ensure that all categorical variables were expressed with binary indicators so they can be easily used in the analysis. The response variable is a binary measure called class that indicates whether the patient has a positive or negative risk for diabetes. The remaining attributes describe the patient and whether they experience a selection of symptoms related to the disease, such as weakness, itching, and obesity. A full list of the attributes and their meanings are outlined in @fig-desc in the Supplementary Materials section.
+
+There are no missing values in this data set since missing data was already addressed by Islam et al.  after data collection [-@diabetesStudy]. To verify this, we performed a check for nulls and blanks as summarized in @fig-missing in the Supplementary Materials. 
+
+Next, each of the individual attributes were explored. @fig-boxplot shows a box plot of patient ages. The are a few outliers that exist outside of the interquartile range. These will be capped at `r bplot_a1`, the upper bound of the range.
+
+
 
 
 ## Timelines
-The presentation slides are aimed to be completed by November 23rd, 2023. The oral presentation will be on November 30th, 2023. The final written project will be completed by December 12, 2023.
+This project will include two main components, a presentation and a written report. The presentation will occur on November 30th, 2023. Slides for the presentation will be completed by November 21, 2023. The written report will be finalized by December 11, 2023.
+
+
+\newpage
+## Supplementary Materials
+### Figures
+```{r fig-desc, ref.label="exp-desc", output=TRUE, message=FALSE, fig.cap="Description of attributes"}
+```
+
+```{r fig-missing, ref.label="missing", output=TRUE, message=FALSE, fig.cap="No missing data"}
+```
+
+```{r fig-boxplot, ref.label="boxplot", output=TRUE, message=FALSE, fig.cap="Boxplot of age", fig.height=3, fig.width=3}
+```
+
+::: {#fig-barcharts layout-ncol=4}
+```{r fig-barchart-1, ref.label="barchart-1", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-2, ref.label="barchart-2", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-3, ref.label="barchart-3", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-4, ref.label="barchart-4", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-5, ref.label="barchart-5", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-6, ref.label="barchart-6", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-7, ref.label="barchart-7", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-8, ref.label="barchart-8", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-9, ref.label="barchart-9", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-10, ref.label="barchart-10", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-11, ref.label="barchart-11", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-12, ref.label="barchart-12", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-13, ref.label="barchart-13", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-14, ref.label="barchart-14", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-15, ref.label="barchart-15", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+```{r fig-barchart-16, ref.label="barchart-16", output=TRUE, message=FALSE, fig.height=1.4, fig.width=1.5}
+```
+Bar charts of categorical variables
+:::
+
+### Code
+```{r code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, size=11}
+```
+
 
 \newpage
 
