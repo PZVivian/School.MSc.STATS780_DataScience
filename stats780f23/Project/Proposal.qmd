@@ -30,7 +30,7 @@ Diabetes is a chronic disease that occurs when the body cannot effectively produ
 
 The data in this proposal was originally collected by Islam et al. from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh [-@diabetesStudy]. It was later openly published on Kaggle [@diabetesData], where it was downloaded. 
 
-In Islam et al.'s study [-@diabetesStudy], machine learning techniques were used to predict diabetes risk. In particular, naive Bayes, logistic regression, and random forest techniques were applied. The study found that the random forest model had the best accuracy [@diabetesStudy]. Various other studies have also applied machine learning to predict diabetes.
+In Islam et al.'s study [-@diabetesStudy], machine learning techniques were used to predict diabetes risk. In particular, naive Bayes, logistic regression, and random forest techniques were applied. The study found that the random forest model had the best accuracy [@diabetesStudy]. Other studies have also applied machine learning to predict diabetes and varying methods were found to be most accurate. For example, Kumar and Velide compared seven different techniques and found that their J48(C4.5) model performed most accurately [-@litReview1] while Rabina and Chopra compared a decision tree with neural networks and found the decision tree to be more accurate [-@litReview2]. 
 
 The study we propose will also utilize machine learning techniques to predict diabetes. It will focus on decision tree and neural network methods.
 
@@ -38,7 +38,7 @@ The study we propose will also utilize machine learning techniques to predict di
 ## Methods
 The first machine learning method will be a decision tree. This method was selected because Islam et al.'s study  found that a decision tree model was most accurate [-@diabetesStudy] and so this study will aim to reproduce such results. The index on the subtrees $\alpha$ will be tuned using cross-validation. Pruning will be applied to reduce the cost complexity of the tree, and random forest ensembling will be used to improve model performance.
 
-The second method will be a neural network. This method was selected since Islam et al.'s study has not explored a model using neural networks [-@diabetesStudy] and so there is potential for this to perform better than a decision tree model. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
+The second method will be a neural network. This method was selected since Islam et al.'s study has not explored a model using neural networks [-@diabetesStudy] and so there is a possibility that a neural network may be more accurate than a tree-based model. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
 
 After the two models are built, they will each be assessed using misclassification rate, accuracy, specificity, and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit to predict diabetes.
 
