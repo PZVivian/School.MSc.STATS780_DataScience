@@ -1,0 +1,151 @@
+---
+title: |
+  | STATS/CSE 780
+  | Assignment 3
+author: "Pao Zhu Vivian Hsu (Student Number: 400547994)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: pdf
+editor: visual
+execute:
+  echo: false
+  warning: false
+  error: false
+header-includes:
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+bibliography: A3.bib
+csl: https://www.zotero.org/styles/apa-single-spaced
+nocite: |
+  @citeR
+fontsize: 11pt
+geometry: 
+  - margin = 1in
+linestretch: 1.5
+---
+
+\newpage
+
+```{r setup}
+# ----- SETUP ----- #
+# Load packages
+library(tidyverse)
+library(ggplot2)
+library(cluster)
+library(fossil)
+
+# Read data and extract labels
+absentData_raw <- read.csv("Absenteeism_at_work.csv", sep = ";")
+absentData_lab <- absentData_raw$`Reason.for.absence`
+
+# Keep only quantitative variables because we are interested in k-means clustering
+absentData <- absentData_raw %>% 
+  select(-c("Reason.for.absence","ID","Month.of.absence","Day.of.the.week","Seasons",
+            "Disciplinary.failure","Education","Son","Social.drinker","Social.smoker"))
+
+```
+
+```{r heir-1}
+# ----- AGGLOMERATIVE HIERARCHICAL CLUSTERING ----- #
+# Compare linkage types
+absentData_sd <- scale(absentData)
+absentData_dist <- dist(absentData_sd)
+plot(hclust(absentData_dist), xlab = "", sub = "", ylab = "", 
+     labels = absentData_lab, main = "Complete Linkage")
+plot(hclust(absentData_dist, method = "average"), 
+     labels = absentData_lab, main = "Average Linkage", 
+     xlab = "", sub = "", ylab = "")
+plot(hclust(absentData_dist, method = "single"), 
+     labels = absentData_lab, main = "Single Linkage", 
+     xlab = "", sub = "", ylab = "")
+
+```
+
+```{r heir-2}
+# Choose k using goodness-of-clustering
+set.seed(780)
+plotHeirSilK <- function(k){
+  hc_out <- hclust(dist(absentData_sd)) 
+  hc_clusters <- cutree(hc_out, k) 
+  #plot(hc_out, labels = absentData_lab) 
+  sil <- silhouette(hc_clusters, dist(absentData_sd))
+  plot(sil, nmax= 1000, cex.names=0.5, main = "", col=1:k, border=NA)
+}
+plotHeirSilK(2)
+plotHeirSilK(3)
+plotHeirSilK(4)
+plotHeirSilK(5)
+plotHeirSilK(6)
+plotHeirSilK(7)
+plotHeirSilK(8)
+plotHeirSilK(9)
+plotHeirSilK(10)
+
+```
+
+
+
+
+```{r kmeans-1}
+# ----- K-MEANS CLUSTERING ----- #
+# Choose k using goodness-of-clustering
+set.seed(780)
+plotSilK <- function(k){
+  x_k <- kmeans(absentData, k, nstart = 20)
+  sil <- silhouette(x_k$cluster, dist(absentData_sd))
+  plot(sil, nmax= 1000, cex.names=0.5, main = "", col=1:k, border=NA)
+}
+plotSilK(2)
+plotSilK(3)
+plotSilK(4)
+plotSilK(5)
+plotSilK(6)
+plotSilK(7)
+plotSilK(8)
+plotSilK(9)
+plotSilK(10)
+
+```
+
+```{r kmeans-2}
+# Perform k-means clustering with k=2
+set.seed(780)
+km_out <- kmeans(absentData, 2, nstart = 20) 
+km_clusters <- km_out$cluster
+
+# Compare the k-means cell clusters with the given labels. Compute the rand index between given labels and k-means clustering with k=2.
+rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
+adj.rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
+
+
+```
+
+```{r pca-1}
+# ----- K-MEANS CLUSTERING AFTER PCA ----- #
+
+
+```
+
+
+
+## Introduction
+
+
+## Methods
+
+
+## Discussion
+
+
+\newpage
+
+## Supplementary material
+
+```{r report-code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+\newpage
+
+## References
+
+::: {#refs}
+:::
