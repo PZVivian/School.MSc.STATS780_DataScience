@@ -25,26 +25,77 @@ linestretch: 1.5
 
 \newpage
 
-```{r setup}
+```{r setup, output=FALSE}
 # ----- SETUP ----- #
 # Load packages
-library(tidyverse)
-library(ggplot2)
-library(cluster)
-library(fossil)
+packages <- c("knitr", "tidyverse", "ggplot2", "cluster", "fossil")
+lapply(packages, library, character.only = TRUE)
 
-# Read data and extract labels
+# Read data, extract labels, and keep only quantitative data
 absentData_raw <- read.csv("Absenteeism_at_work.csv", sep = ";")
 absentData_lab <- absentData_raw$`Reason.for.absence`
-
-# Keep only quantitative variables because we are interested in k-means clustering
 absentData <- absentData_raw %>% 
   select(-c("Reason.for.absence","ID","Month.of.absence","Day.of.the.week","Seasons",
-            "Disciplinary.failure","Education","Son","Social.drinker","Social.smoker"))
+            "Disciplinary.failure","Education","Social.drinker","Social.smoker"))
+```
+
+```{r explore-1}
+# ----- DATA EXPLORATION ----- #
+# Check data types, min, max, and missing data
+data_type <- sapply(absentData,class)
+min <- sapply(absentData, function(col){min(col,na.rm=TRUE)})
+max <- sapply(absentData, function(col){max(col,na.rm=TRUE)})
+nulls <- sapply(absentData, function(col){sum(is.na(col))})
+blanks <- sapply(absentData, 
+                 function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
+data_summary <- data.frame(row.names = names(nulls), data_type=data_type, 
+                           min=min, max=max, nulls_blanks=nulls+blanks)
+kable(data_summary)
 
 ```
 
-```{r heir-1}
+```{r explore-2}
+# Create box plots to check for outliers
+b01 <- boxplot(absentData$Transportation.expense, ylab = "Transportation Expense")
+b02 <- boxplot(absentData$Distance.from.Residence.to.Work, 
+               ylab = "Distance from residence to work")
+b03 <- boxplot(absentData$Service.time, ylab = "Service time")
+b04 <- boxplot(absentData$Age, ylab = "Age")
+b05 <- boxplot(absentData$Work.load.Average.day, ylab = "Work load average per day")
+b06 <- boxplot(absentData$Hit.target, ylab = "Hit target")
+b07 <- boxplot(absentData$Son, ylab = "Son")
+b08 <- boxplot(absentData$Pet, ylab = "Pet")
+b09 <- boxplot(absentData$Weight, ylab = "Weight")
+b10 <- boxplot(absentData$Height, ylab = "Height")
+b11 <- boxplot(absentData$Body.mass.index, ylab = "Body mass index")
+b12 <- boxplot(absentData$Absenteeism.time.in.hours, ylab = "Absenteeism time in hours")
+
+```
+
+```{r cleanse}
+# ----- DATA CLEANSING -----
+# Handle outliers by capping them using interquartile range
+cap <- function(val, bplot) {
+  lower_fence <- bplot$stats[2]-(1.5*(bplot$stats[4]-bplot$stats[2])) #Q1-1.5*IQR
+  upper_fence <- bplot$stats[4]+(1.5*(bplot$stats[4]-bplot$stats[2])) #Q3+1.5*IQR
+  val <- ifelse(val < lower_fence, lower_fence, val)
+  val <- ifelse(val > upper_fence, upper_fence, val)
+  val
+}
+absentData <- absentData %>% 
+  mutate(Transportation.expense = cap(val=Transportation.expense, bplot=b01),
+         Service.time = cap(val=Service.time, bplot=b03),
+         Age = cap(val=Age, bplot=b04),
+         Work.load.Average.day = cap(val=Work.load.Average.day, bplot=b05),
+         Hit.target = cap(val=Hit.target, bplot=b06),
+         Pet = cap(val=Pet, bplot=b08),
+         Height = cap(val=Height, bplot=b10),
+         Absenteeism.time.in.hours = cap(val=Absenteeism.time.in.hours, bplot=b12))
+
+```
+
+
+```{r hier-1}
 # ----- AGGLOMERATIVE HIERARCHICAL CLUSTERING ----- #
 # Compare linkage types
 absentData_sd <- scale(absentData)
@@ -60,15 +111,14 @@ plot(hclust(absentData_dist, method = "single"),
 
 ```
 
-```{r heir-2}
+```{r hier-2}
 # Choose k using goodness-of-clustering
 set.seed(780)
 plotHeirSilK <- function(k){
   hc_out <- hclust(dist(absentData_sd)) 
   hc_clusters <- cutree(hc_out, k) 
-  #plot(hc_out, labels = absentData_lab) 
   sil <- silhouette(hc_clusters, dist(absentData_sd))
-  plot(sil, nmax= 1000, cex.names=0.5, main = "", col=1:k, border=NA)
+  plot(sil, nmax= 800, cex.names=0.5, main = "", col=1:k, border=NA)
 }
 plotHeirSilK(2)
 plotHeirSilK(3)
@@ -82,48 +132,114 @@ plotHeirSilK(10)
 
 ```
 
+```{r hier-3}
+# Perform hierarchical clustering using k=2
+set.seed(780)
+hc_out <- hclust(dist(absentData_sd)) 
+adj.rand.index(cutree(hc_out, k = 2), as.numeric(as.factor(absentData_lab)))
+```
 
 
 
 ```{r kmeans-1}
 # ----- K-MEANS CLUSTERING ----- #
-# Choose k using goodness-of-clustering
+# Functions to get silhouette and plot for a k value
 set.seed(780)
-plotSilK <- function(k){
-  x_k <- kmeans(absentData, k, nstart = 20)
-  sil <- silhouette(x_k$cluster, dist(absentData_sd))
-  plot(sil, nmax= 1000, cex.names=0.5, main = "", col=1:k, border=NA)
+silK <- function(k){
+  x_k <- kmeans(absentData_sd, k, nstart = 20)
+  silhouette(x_k$cluster, dist(absentData_sd))
 }
-plotSilK(2)
-plotSilK(3)
-plotSilK(4)
-plotSilK(5)
-plotSilK(6)
-plotSilK(7)
-plotSilK(8)
-plotSilK(9)
-plotSilK(10)
+plotSil <- function(sil){
+  plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
+}
+
+# Choose k using goodness-of-clustering
+k <- c(2:400)
+sil_k <- lapply(k, silK)
+sil_score <- sapply(sil_k, function(x) {mean(x[,"sil_width"])})
+sil_max <- max(sil_score)
+sil_max_k <- match(sil_max, sil_score)+min(k)-1
+plot(x=k, y=sil_score, col=ifelse(sil_score==sil_max, "red", "black"))
+text(x=sil_max_k, y=sil_max, pos=2, col="red",
+     labels= c(paste0("Maximum: (",sil_max_k,", ",round(sil_max,2), ")")))
+
+# Plot some of the silhouettes
+plotSil(sil_k[[1]])
+plotSil(sil_k[[100]])
+plotSil(sil_k[[150]])
+plotSil(sil_k[[200]])
+plotSil(sil_k[[250]])
+plotSil(sil_k[[sil_max_k-1]])
+plotSil(sil_k[[300]])
+plotSil(sil_k[[350]])
 
 ```
 
 ```{r kmeans-2}
-# Perform k-means clustering with k=2
+# Perform k-means clustering with best k value
 set.seed(780)
-km_out <- kmeans(absentData, 2, nstart = 20) 
+km_out <- kmeans(absentData, sil_max_k, nstart = 20) 
 km_clusters <- km_out$cluster
 
-# Compare the k-means cell clusters with the given labels. Compute the rand index between given labels and k-means clustering with k=2.
+# Compare the k-means clusters with the given labels. 
+# Compute the rand index between the labels and k-means clustering.
 rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
 adj.rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
-
 
 ```
 
 ```{r pca-1}
-# ----- K-MEANS CLUSTERING AFTER PCA ----- #
+# ----- HIERARCHICAL CLUSTERING AFTER PCA ----- #
+# Principal component analysis (PCA)
+pr_out <- prcomp(absentData, scale = TRUE)
 
+# Proportion of variance explained
+plot(pr_out)
 
 ```
+
+```{r pca-2}
+pve <- 100 * pr_out$sdev^2 / sum(pr_out$sdev^2)  
+plot(pve, type = "o",
+xlab = "Principal Component", col = "blue", ylab = "Percent of variance explained (PVE)")
+
+```
+
+```{r pca-3}
+plot(cumsum(pve), type = "o", ylab = "Cumulative PVE",
+     xlab = "Principal Component", col = "brown3")
+
+```
+
+```{r pca-4}
+# Choose k using goodness-of-clustering
+plotPCAHeirSilK <- function(k){
+  hc_out <- hclust(dist(dist(pr_out$x[, 1:2]))) 
+  hc_clusters <- cutree(hc_out, k) 
+  sil <- silhouette(hc_clusters, dist(pr_out$x[, 1:2]))
+  plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
+}
+plotPCAHeirSilK(2)
+plotPCAHeirSilK(3)
+plotPCAHeirSilK(4)
+plotPCAHeirSilK(5)
+plotPCAHeirSilK(6)
+plotPCAHeirSilK(7)
+plotPCAHeirSilK(8)
+plotPCAHeirSilK(9)
+plotPCAHeirSilK(10)
+plotPCAHeirSilK(11)
+plotPCAHeirSilK(12)
+plotPCAHeirSilK(13)
+
+```
+
+```{r pca-5}
+hc_out <- hclust(dist(dist(pr_out$x[, 1:2]))) 
+hc_clusters <- cutree(hc_out, 11) 
+adj.rand.index(hc_clusters, as.numeric(as.factor(absentData_lab)))
+```
+
 
 
 
