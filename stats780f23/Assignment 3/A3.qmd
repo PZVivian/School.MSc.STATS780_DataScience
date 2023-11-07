@@ -92,20 +92,64 @@ absentData <- absentData %>%
          Height = cap(val=Height, bplot=b10),
          Absenteeism.time.in.hours = cap(val=Absenteeism.time.in.hours, bplot=b12))
 
+# Scale the data
+absentData_sd <- scale(absentData)
+
+```
+
+```{r cluster-funs}
+# ----- CLUSTERING FUNCTIONS ----- #
+# Get silhouette for k-means clustering
+kmcSilK <- function(k, data){
+  x_k <- kmeans(data, k, nstart = 20)
+  silhouette(x_k$cluster, dist(data))
+}
+
+# Get silhouette for hierarchical clustering
+hcSilK <- function(k, data){
+  hc_out <- hclust(dist(data)) 
+  hc_clusters <- cutree(hc_out, k) 
+  silhouette(hc_clusters, dist(data))
+}
+
+# Plot silhouette
+plotSil <- function(sil){
+  plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
+}
+
+# Choose k using goodness-of-clustering
+# k = the k values to test
+# silFun = the silhouette function
+# data = the data used in silFun
+chooseK <- function(k, silFun, data) {
+  sil_k <- lapply(k, silFun, data=data)
+  sil_score <- sapply(sil_k, function(x) {mean(x[,"sil_width"])})
+  sil_max <- max(sil_score)
+  sil_max_k <- match(sil_max, sil_score)+min(k)-1
+  plot(x=k, y=sil_score, col=ifelse(sil_score==sil_max, "red", "black"))
+  text(x=sil_max_k, y=sil_max, pos=1, col="red",
+     labels= c(paste0("Max: (",sil_max_k,", ",round(sil_max,2), ")")))
+}
+
+#plotSil(kmcSilK(2, absentData_sd)) # k-means clustering
+#plotSil(hcSilK(2, absentData_sd)) # hierarchical clustering
+#plotSil(hcSilK(2, pr_out$x[, 1:2])) # hierarchical clustering after PCA
+#chooseK(2:30, kmcSilK, absentData_sd)
+#chooseK(2:30, hcSilK, absentData_sd)
+#chooseK(2:30, hcSilK, pr_out$x[, 1:2])
+
 ```
 
 
 ```{r hier-1}
 # ----- AGGLOMERATIVE HIERARCHICAL CLUSTERING ----- #
 # Compare linkage types
-absentData_sd <- scale(absentData)
-absentData_dist <- dist(absentData_sd)
-plot(hclust(absentData_dist), xlab = "", sub = "", ylab = "", 
+plot(hclust(dist(absentData_sd)), xlab = "", sub = "", ylab = "", 
      labels = absentData_lab, main = "Complete Linkage")
-plot(hclust(absentData_dist, method = "average"), 
+plot(hclust(dist(absentData_sd), method = "average"), 
      labels = absentData_lab, main = "Average Linkage", 
      xlab = "", sub = "", ylab = "")
-plot(hclust(absentData_dist, method = "single"), 
+plot(hclust(dist(absentData_sd), method = "single"), 
      labels = absentData_lab, main = "Single Linkage", 
      xlab = "", sub = "", ylab = "")
 
@@ -143,42 +187,39 @@ adj.rand.index(cutree(hc_out, k = 2), as.numeric(as.factor(absentData_lab)))
 
 ```{r kmeans-1}
 # ----- K-MEANS CLUSTERING ----- #
-# Functions to get silhouette and plot for a k value
+# Choose k using goodness-of-clustering
 set.seed(780)
-silK <- function(k){
+plotSilK <- function(k){
   x_k <- kmeans(absentData_sd, k, nstart = 20)
-  silhouette(x_k$cluster, dist(absentData_sd))
-}
-plotSil <- function(sil){
+  sil <- silhouette(x_k$cluster, dist(absentData_sd))
   plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
 }
-
-# Choose k using goodness-of-clustering
-k <- c(2:400)
-sil_k <- lapply(k, silK)
-sil_score <- sapply(sil_k, function(x) {mean(x[,"sil_width"])})
-sil_max <- max(sil_score)
-sil_max_k <- match(sil_max, sil_score)+min(k)-1
-plot(x=k, y=sil_score, col=ifelse(sil_score==sil_max, "red", "black"))
-text(x=sil_max_k, y=sil_max, pos=2, col="red",
-     labels= c(paste0("Maximum: (",sil_max_k,", ",round(sil_max,2), ")")))
-
-# Plot some of the silhouettes
-plotSil(sil_k[[1]])
-plotSil(sil_k[[100]])
-plotSil(sil_k[[150]])
-plotSil(sil_k[[200]])
-plotSil(sil_k[[250]])
-plotSil(sil_k[[sil_max_k-1]])
-plotSil(sil_k[[300]])
-plotSil(sil_k[[350]])
+plotSilK(2)
+plotSilK(3)
+plotSilK(4)
+plotSilK(5)
+plotSilK(6)
+plotSilK(7)
+plotSilK(8)
+plotSilK(9)
+plotSilK(10)
+plotSilK(11)
+plotSilK(12)
+plotSilK(13)
+plotSilK(14)
+plotSilK(15)
+plotSilK(16)
+plotSilK(17)
+plotSilK(18)
+plotSilK(19)
+plotSilK(20)
 
 ```
 
 ```{r kmeans-2}
-# Perform k-means clustering with best k value
+# Perform k-means clustering with best k=15
 set.seed(780)
-km_out <- kmeans(absentData, sil_max_k, nstart = 20) 
+km_out <- kmeans(absentData, 15, nstart = 20) 
 km_clusters <- km_out$cluster
 
 # Compare the k-means clusters with the given labels. 
@@ -213,8 +254,9 @@ plot(cumsum(pve), type = "o", ylab = "Cumulative PVE",
 
 ```{r pca-4}
 # Choose k using goodness-of-clustering
+set.seed(2023780)
 plotPCAHeirSilK <- function(k){
-  hc_out <- hclust(dist(dist(pr_out$x[, 1:2]))) 
+  hc_out <- hclust(dist(pr_out$x[, 1:2])) 
   hc_clusters <- cutree(hc_out, k) 
   sil <- silhouette(hc_clusters, dist(pr_out$x[, 1:2]))
   plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
