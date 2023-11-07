@@ -196,39 +196,29 @@ adj.rand.index(cutree(hc_out, k = 2), as.numeric(as.factor(absentData_lab)))
 
 ```{r kmeans-1}
 # ----- K-MEANS CLUSTERING ----- #
-# Choose k using goodness-of-clustering
-set.seed(780)
-plotSilK <- function(k){
-  x_k <- kmeans(absentData_sd, k, nstart = 20)
-  sil <- silhouette(x_k$cluster, dist(absentData_sd))
-  plot(sil, nmax= 800, cex.names=0.5, main = "", border=NA)
-}
-plotSilK(2)
-plotSilK(3)
-plotSilK(4)
-plotSilK(5)
-plotSilK(6)
-plotSilK(7)
-plotSilK(8)
-plotSilK(9)
-plotSilK(10)
-plotSilK(11)
-plotSilK(12)
-plotSilK(13)
-plotSilK(14)
-plotSilK(15)
-plotSilK(16)
-plotSilK(17)
-plotSilK(18)
-plotSilK(19)
-plotSilK(20)
-
+# Get silhouette scores for multiple k values and plot them
+set.seed(3)
+k <- c(2:20)
+good_of_cluster <- chooseK(k, kmcSilK, absentData_sd)
+good_of_cluster$plot
 ```
 
 ```{r kmeans-2}
-# Perform k-means clustering with best k=15
-set.seed(780)
-km_out <- kmeans(absentData, 15, nstart = 20) 
+# Based off silhouette plots, choose the best k
+plotSil(good_of_cluster$sil_k[[14]])
+plotSil(good_of_cluster$sil_k[[15]])
+plotSil(good_of_cluster$sil_k[[16]])
+plotSil(good_of_cluster$sil_k[[17]])
+plotSil(good_of_cluster$sil_k[[18]])
+plotSil(good_of_cluster$sil_k[[19]])
+k <- 16
+
+```
+
+```{r kmeans-3}
+# Perform k-means clustering with best k
+set.seed(3)
+km_out <- kmeans(absentData, k, nstart = 20) 
 km_clusters <- km_out$cluster
 
 # Compare the k-means clusters with the given labels. 
