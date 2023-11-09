@@ -27,26 +27,26 @@ linestretch: 1.5
 
 ```{r setup, output=FALSE}
 # ----- SETUP ----- #
-# Load packages
 packages <- c("knitr", "tidyverse", "ggplot2", "cluster", "fossil")
 lapply(packages, library, character.only = TRUE)
 
 # Read data, extract labels, and keep only quantitative data
-absentData_raw <- read.csv("Absenteeism_at_work.csv", sep = ";")
-absentData_lab <- absentData_raw$`Reason.for.absence`
-absentData <- absentData_raw %>% 
+absentData_full <- read.csv("Absenteeism_at_work.csv", sep = ";")
+absentData_lab <- absentData_full$`Reason.for.absence`
+absentData_notclean <- absentData_full %>% 
   select(-c("Reason.for.absence","ID","Month.of.absence","Day.of.the.week","Seasons",
             "Disciplinary.failure","Education","Social.drinker","Social.smoker"))
+
 ```
 
-```{r explore-1}
+```{r explore-summary, output=FALSE}
 # ----- DATA EXPLORATION ----- #
 # Check data types, min, max, and missing data
-data_type <- sapply(absentData,class)
-min <- sapply(absentData, function(col){min(col,na.rm=TRUE)})
-max <- sapply(absentData, function(col){max(col,na.rm=TRUE)})
-nulls <- sapply(absentData, function(col){sum(is.na(col))})
-blanks <- sapply(absentData, 
+data_type <- sapply(absentData_notclean,class)
+min <- sapply(absentData_notclean, function(col){min(col,na.rm=TRUE)})
+max <- sapply(absentData_notclean, function(col){max(col,na.rm=TRUE)})
+nulls <- sapply(absentData_notclean, function(col){sum(is.na(col))})
+blanks <- sapply(absentData_notclean, 
                  function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
 data_summary <- data.frame(row.names = names(nulls), data_type=data_type, 
                            min=min, max=max, nulls_blanks=nulls+blanks)
@@ -54,21 +54,43 @@ kable(data_summary)
 
 ```
 
-```{r explore-2}
+```{r explore-bplot-1, output=FALSE}
 # Create box plots to check for outliers
-b01 <- boxplot(absentData$Transportation.expense, ylab = "Transportation Expense")
-b02 <- boxplot(absentData$Distance.from.Residence.to.Work, 
+b01 <- boxplot(absentData_notclean$Transportation.expense, ylab = "Transportation expense") 
+```
+```{r explore-bplot-2, output=FALSE}
+b02 <- boxplot(absentData_notclean$Distance.from.Residence.to.Work, 
                ylab = "Distance from residence to work")
-b03 <- boxplot(absentData$Service.time, ylab = "Service time")
-b04 <- boxplot(absentData$Age, ylab = "Age")
-b05 <- boxplot(absentData$Work.load.Average.day, ylab = "Work load average per day")
-b06 <- boxplot(absentData$Hit.target, ylab = "Hit target")
-b07 <- boxplot(absentData$Son, ylab = "Son")
-b08 <- boxplot(absentData$Pet, ylab = "Pet")
-b09 <- boxplot(absentData$Weight, ylab = "Weight")
-b10 <- boxplot(absentData$Height, ylab = "Height")
-b11 <- boxplot(absentData$Body.mass.index, ylab = "Body mass index")
-b12 <- boxplot(absentData$Absenteeism.time.in.hours, ylab = "Absenteeism time in hours")
+```
+```{r explore-bplot-3, output=FALSE}
+b03 <- boxplot(absentData_notclean$Service.time, ylab = "Service time")
+```
+```{r explore-bplot-4, output=FALSE}
+b04 <- boxplot(absentData_notclean$Age, ylab = "Age")
+```
+```{r explore-bplot-5, output=FALSE}
+b05 <- boxplot(absentData_notclean$Work.load.Average.day, ylab = "Work load average per day")
+```
+```{r explore-bplot-6, output=FALSE}
+b06 <- boxplot(absentData_notclean$Hit.target, ylab = "Hit target")
+```
+```{r explore-bplot-7, output=FALSE}
+b07 <- boxplot(absentData_notclean$Son, ylab = "Son")
+```
+```{r explore-bplot-8, output=FALSE}
+b08 <- boxplot(absentData_notclean$Pet, ylab = "Pet")
+```
+```{r explore-bplot-9, output=FALSE}
+b09 <- boxplot(absentData_notclean$Weight, ylab = "Weight")
+```
+```{r explore-bplot-10, output=FALSE}
+b10 <- boxplot(absentData_notclean$Height, ylab = "Height")
+```
+```{r explore-bplot-11, output=FALSE}
+b11 <- boxplot(absentData_notclean$Body.mass.index, ylab = "Body mass index")
+```
+```{r explore-bplot-12, output=FALSE}
+b12 <- boxplot(absentData_notclean$Absenteeism.time.in.hours, ylab = "Absenteeism time in hours")
 
 ```
 
@@ -82,7 +104,7 @@ cap <- function(val, bplot) {
   val <- ifelse(val > upper_fence, upper_fence, val)
   val
 }
-absentData <- absentData %>% 
+absentData <- absentData_notclean %>% 
   mutate(Transportation.expense = cap(val=Transportation.expense, bplot=b01),
          Service.time = cap(val=Service.time, bplot=b03),
          Age = cap(val=Age, bplot=b04),
@@ -106,8 +128,8 @@ kmcSilK <- function(k, data){
 }
 
 # Get silhouette for hierarchical clustering
-hcSilK <- function(k, data){
-  hc_out <- hclust(dist(data)) 
+hcSilK <- function(k, data, method = "complete"){
+  hc_out <- hclust(dist(data), method = method) 
   hc_clusters <- cutree(hc_out, k) 
   silhouette(hc_clusters, dist(data))
 }
@@ -136,44 +158,57 @@ chooseK <- function(k, silFun, data) {
   max_point <-tibble(k=sil_max_k,sil_score=sil_max)
   max_lab <- paste0("Max: (",sil_max_k,", ",round(sil_max,2), ")")
   plot <- ggplot(silData, aes(x=k, y=sil_score)) + geom_point() + 
+    labs(x="Number of clusters (k)", y="Average silhouette width") + 
     geom_point(data=max_point, colour="red") +
-    geom_text(data=max_point, aes(label=ifelse(k==sil_max_k,max_lab,""), color="red"),hjust=0,vjust=0)
+    geom_text(data=max_point, aes(label=ifelse(k==sil_max_k,max_lab,""), color="red"),hjust=1,vjust=1) +
+    theme(legend.position="none")
   
   # Return plot, silhouettes, and max k
   list(plot=plot, sil_k=sil_k, max_k=sil_max_k)
 }
 
-#plotSil(hcSilK(2, absentData_sd)) # hierarchical clustering
-#plotSil(hcSilK(2, pr_out$x[, 1:2])) # hierarchical clustering after PCA
-#chooseK(2:30, hcSilK, absentData_sd)
-#chooseK(2:30, hcSilK, pr_out$x[, 1:2])
-
 ```
 
-
-```{r hier-1}
+```{r hc-kplot, output=FALSE}
 # ----- AGGLOMERATIVE HIERARCHICAL CLUSTERING ----- #
 # Get silhouette scores for multiple k values and plot them
 set.seed(3)
 k <- c(2:20)
 good_of_cluster <- chooseK(k, hcSilK, absentData_sd) # uses complete linkage
 good_of_cluster$plot
-plotSil(good_of_cluster$sil_k[[1]])
-k <- good_of_cluster$max_k
+```
+```{r hc-plotsil-1, output=FALSE}
+plotSil(good_of_cluster$sil_k[[9]])
+```
+```{r hc-plotsil-2, output=FALSE}
+plotSil(good_of_cluster$sil_k[[10]])
+```
+```{r hc-plotsil-3, output=FALSE}
+plotSil(good_of_cluster$sil_k[[11]])
+```
+```{r hc-plotsil-4, output=FALSE}
+plotSil(good_of_cluster$sil_k[[12]])
+```
+```{r hc-plotsil-5, output=FALSE}
+plotSil(good_of_cluster$sil_k[[14]])
+```
+```{r hc-plotsil-6, output=FALSE}
+plotSil(good_of_cluster$sil_k[[19]])
+k <- 10
 
 ```
 
-```{r hier-2}
+```{r hc-cluster}
 # Perform hierarchical clustering using best k
 set.seed(3)
 hc_out <- hclust(dist(absentData_sd)) 
-rand.index(cutree(hc_out, k), as.numeric(as.factor(absentData_lab)))
-adj.rand.index(cutree(hc_out, k), as.numeric(as.factor(absentData_lab)))
+ri_hc <- rand.index(cutree(hc_out, k), as.numeric(as.factor(absentData_lab)))
+ari_hc <- adj.rand.index(cutree(hc_out, k), as.numeric(as.factor(absentData_lab)))
 
 ```
 
 
-```{r kmeans-1}
+```{r kmc-kplot, output=FALSE}
 # ----- K-MEANS CLUSTERING ----- #
 # Get silhouette scores for multiple k values and plot them
 set.seed(3)
@@ -183,95 +218,198 @@ good_of_cluster$plot
 
 ```
 
-```{r kmeans-2}
+```{r kmc-plotsil-1, output=FALSE}
 # Based off silhouette plots, choose the best k
-plotSil(good_of_cluster$sil_k[[14]])
 plotSil(good_of_cluster$sil_k[[15]])
+```
+```{r kmc-plotsil-2, output=FALSE}
 plotSil(good_of_cluster$sil_k[[16]])
+```
+```{r kmc-plotsil-3, output=FALSE}
 plotSil(good_of_cluster$sil_k[[17]])
-plotSil(good_of_cluster$sil_k[[18]])
-plotSil(good_of_cluster$sil_k[[19]])
-k <- 16
-
+k <- good_of_cluster$max_k
 ```
 
-```{r kmeans-3}
+
+```{r kmc-cluster}
 # Perform k-means clustering with best k and compute the rand indices
 set.seed(3)
 km_out <- kmeans(absentData, k, nstart = 20) 
 km_clusters <- km_out$cluster
-rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
-adj.rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
+ri_kmc <- rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
+ari_kmc <- adj.rand.index(km_clusters, as.numeric(as.factor(absentData_lab)))
 
 ```
 
-```{r pca-1}
+```{r pcahc-scree, output=FALSE}
 # ----- HIERARCHICAL CLUSTERING AFTER PCA ----- #
 # Proportion of variance explained
 set.seed(3)
 pr_out <- prcomp(absentData, scale = TRUE)
-plot(pr_out)
 
-```
-
-```{r pca-2}
+# Scree plot
 pve <- 100 * pr_out$sdev^2 / sum(pr_out$sdev^2)  
 plot(pve, type = "o",
 xlab = "Principal Component", col = "blue", ylab = "Percent of variance explained (PVE)")
 
 ```
 
-```{r pca-3}
-plot(cumsum(pve), type = "o", ylab = "Cumulative PVE",
-     xlab = "Principal Component", col = "brown3")
-
-```
-
-```{r pca-4}
+```{r pcahc-kplot, output=FALSE}
 # Get silhouette scores for multiple k values and plot them
 set.seed(3)
 k <- c(2:20)
-good_of_cluster <- chooseK(k, hcSilK, pr_out$x[, 1:2])
+good_of_cluster <- chooseK(k, hcSilK, pr_out$x[, 1:8])
 good_of_cluster$plot
 
 ```
 
-```{r pca-5}
+```{r pcahc-plotsil-1, output=FALSE}
 # Based off silhouette plots, choose the best k
+plotSil(good_of_cluster$sil_k[[13]])
+```
+```{r pcahc-plotsil-2, output=FALSE}
 plotSil(good_of_cluster$sil_k[[14]])
+```
+```{r pcahc-plotsil-3, output=FALSE}
 plotSil(good_of_cluster$sil_k[[15]])
-plotSil(good_of_cluster$sil_k[[16]])
-plotSil(good_of_cluster$sil_k[[17]])
-plotSil(good_of_cluster$sil_k[[18]])
-plotSil(good_of_cluster$sil_k[[19]])
 k <- good_of_cluster$max_k
-
 ```
 
-```{r pca-6}
+```{r pcahc-cluster}
 set.seed(3)
-hc_out <- hclust(dist(dist(pr_out$x[, 1:2]))) 
+hc_out <- hclust(dist(dist(pr_out$x[, 1:8]))) 
 hc_clusters <- cutree(hc_out, k) 
-rand.index(hc_clusters, as.numeric(as.factor(absentData_lab)))
-adj.rand.index(hc_clusters, as.numeric(as.factor(absentData_lab)))
+ri_pcahc <- rand.index(hc_clusters, as.numeric(as.factor(absentData_lab)))
+ari_pcahc <- adj.rand.index(hc_clusters, as.numeric(as.factor(absentData_lab)))
 ```
 
-
+```{r compare, output=FALSE}
+# ----- COMPARISON ----- #
+clustering_method <- c("hierarchical", "k-means", "pca followed by hierarchical")
+rand_index <- round(c(ri_hc, ri_kmc, ri_pcahc),3)
+adj_rand_index <- round(c(ari_hc, ari_kmc, ari_pcahc),3)
+comparison <- data.frame(clustering_method = clustering_method,
+                         rand_index=rand_index, adj_rand_index=adj_rand_index)
+kable(comparison)
+```
 
 
 ## Introduction
 
 
 ## Methods
+The data in this study was sourced from the UC Irvine Machine Learning Repository [@absentData]. It contains `r ncol(absentData_full)` variables and `r nrow(absentData_full)` records of absenteeism at work from 2007 to 2010 at a courier company in Brazil [@absentData]. The data set includes a categorical variable indicating the reason for absenteeism and various columns describing the employee and their working conditions. The categorical variable for absenteeism combined with quantitative variables makes this a suitable data set for hierarchical and k-means clustering. Since we are only interested in clustering using quantitative variables, all categorical variables apart from the reason for absenteeism were removed from the data set, resulting in a total of `r ncol(absentData)` variables.
+
+Prior to clustering, we first explored the data to check if data transformation was required. There were no missing values, unexpected data types, or unreasonable data types detected in the data as outlined in Supp. Materials @tbl-explore-summary. Of the 12 variables, 8 of them had outliers through box plots as shown in Supp. Materials @fig-bplots. These were capped by the lower and upper fences computed with the interquartile range. We also scaled and centered the data.
+
+Once data transformation was done, we then applied clustering methods to the data. We first performed hierarchical clustering to the data. Silhouette plots for cluster sizes 2 to 20 were created and the average silhouette widths were plotted as shown in the left plot in @fig-kplots. The maximum average silhouette width was for a cluster size of 20, however we decided to use 10 clusters instead because the average widths were not very different between a cluster size of 10 versus 20 as shown in @fig-kplots, and there were many negative silhouette widths (i.e. samples placed into the wrong cluster) for cluster size of 20.
+
+::: {#fig-kplots layout-ncol=3}
+```{r fig-hc-kplot, ref.label="hc-kplot", output=TRUE, message=FALSE, fig.height=4, fig.width=4}
+```
+```{r fig-kmc-kplot, ref.label="kmc-kplot", output=TRUE, message=FALSE, fig.height=4, fig.width=4}
+```
+```{r fig-pcahc-kplot, ref.label="pcahc-kplot", output=TRUE, message=FALSE, fig.height=4, fig.width=4}
+```
+Average silhouette widths for cluster sizes 1 to 20; Left chart is for hierarchical clustering, centre chart is for k-means clustering, and right chart is for PCA followed by hierarchical clustering.
+:::
+
+Next, we performed k-means clustering. Similar to the previous method, we created silhouette plots for cluster sizes 2 to 20 and looked for the maximum average silhouette width. In this case, a cluster size of 17 produced the highest average as displayed in the center plot of @fig-kplots. We decided to use 17 clusters since other cluster sizes did not show strong improvements in terms of negative silhouette widths as shown in Supp. Materials @fig-kmc-plotsils.
+
+Finally, we performed principal component analysis (PCA) followed by hierarchical clustering. 8 principal components (PCs) and 14 clusters were used. We decided the PCs using @fig-pcahc-scree and selected the size where approximately 85% of the variation could be explained. We decided in a similar way as the previous two clustering methods. We plotted average silouette widths for sizes of 2 to 20. We then selected the cluster with the maximum silhouette score as illustrated in the right plot of @fig-kplots, and ensured that the negative silhouette width was minimal compared to other cluster sizes that produced a similar average silhouette width. This shown in Supp. Materials @fig-pcahc-plotsils.
+
+```{r}
+#| label: fig-pcahc-scree
+#| ref-label: pcahc-scree
+#| fig-cap: Scree plot
+#| output: TRUE
+#| message: FALSE
+#| fig-height: 3.5
+#| fig-width: 4
+```
 
 
-## Discussion
+## Results
+@tbl-compare shows the results for the three clustering methods using Rand index and adjusted Rand index. All three methods produced a Rand index between 0.81 and 0.86. K-means clustering had the highest Rand index, followed closely by hierarchical clustering after PCA, and finally hierarchical clustering. While this suggests that k-means clustering produces the most similar data clustering compared to the given data labels, the adjusted Rand index is quite low compared to the other two methods. Hierarchical clustering produced the highest adjusted Rand index. All three methods produced a low adjusted Rand index value ranging from about 0.09 to 0.17.
+
+Thus, out of the three methods, the hierarchical methods performed the best. While Rand indices were high, adjusted Rand indices were low. This indicates that these results may not be reliable and the clustering methods we used may not explain the absenteeism at work very well. Further work is required to determine if another method, such as PCA followed by k-means clustering, would better describe absenteeism.
+ 
+```{r}
+#| label: tbl-compare
+#| ref-label: compare
+#| tbl-cap: Comparison of clustering methods using Rand index and adjusted Rand index
+#| output: TRUE
+#| message: FALSE
+#| tbl-height: 3
+#| tbl-width: 3
+```
 
 
 \newpage
 
 ## Supplementary material
+### Tables and figures
+```{r}
+#| label: tbl-explore-summary
+#| ref-label: explore-summary
+#| tbl-cap: Summary of data prior to cleansing
+#| output: TRUE
+#| message: FALSE
+#| tbl-height: 3
+#| tbl-width: 3
+```
 
+::: {#fig-bplots layout-ncol=3}
+```{r fig-bplot-1, ref.label="explore-bplot-1", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-2, ref.label="explore-bplot-2", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-3, ref.label="explore-bplot-3", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-4, ref.label="explore-bplot-4", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-5, ref.label="explore-bplot-5", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-6, ref.label="explore-bplot-6", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-7, ref.label="explore-bplot-7", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-8, ref.label="explore-bplot-8", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-9, ref.label="explore-bplot-9", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-10, ref.label="explore-bplot-10", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-11, ref.label="explore-bplot-11", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-bplot-12, ref.label="explore-bplot-12", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+Outliers were detected from the box plots of some variables
+:::
+
+::: {#fig-kmc-plotsils layout-ncol=3}
+```{r fig-kmc-plotsil-1, ref.label="pcahc-plotsil-1", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-kmc-plotsil-2, ref.label="pcahc-plotsil-2", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-kmc-plotsil-3, ref.label="pcahc-plotsil-3", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+Silhouette plots for cluster sizes k = 16, 17, and 18. k = 17 returned the maximum silhouette width values while k = 16 and 18 are neighbouring cluster sizes with a similar silhouette widths.
+:::
+
+::: {#fig-pcahc-plotsils layout-ncol=3}
+```{r fig-pcahc-plotsil-1, ref.label="pcahc-plotsil-1", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-pcahc-plotsil-2, ref.label="pcahc-plotsil-2", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+```{r fig-pcahc-plotsil-3, ref.label="pcahc-plotsil-3", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
+```
+Silhouette plots for cluster sizes k = 14, 15, and 16. k = 15 returned the maximum silhouette width values while k = 14 and 16 are neighbouring cluster sizes with a similar silhouette widths.
+:::
+
+
+
+### Code
 ```{r report-code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```
 
