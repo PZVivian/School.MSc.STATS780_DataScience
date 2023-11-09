@@ -69,7 +69,8 @@ b03 <- boxplot(absentData_notclean$Service.time, ylab = "Service time")
 b04 <- boxplot(absentData_notclean$Age, ylab = "Age")
 ```
 ```{r explore-bplot-5, output=FALSE}
-b05 <- boxplot(absentData_notclean$Work.load.Average.day, ylab = "Work load average per day")
+b05 <- boxplot(absentData_notclean$Work.load.Average.day, 
+               ylab = "Work load average per day")
 ```
 ```{r explore-bplot-6, output=FALSE}
 b06 <- boxplot(absentData_notclean$Hit.target, ylab = "Hit target")
@@ -90,7 +91,8 @@ b10 <- boxplot(absentData_notclean$Height, ylab = "Height")
 b11 <- boxplot(absentData_notclean$Body.mass.index, ylab = "Body mass index")
 ```
 ```{r explore-bplot-12, output=FALSE}
-b12 <- boxplot(absentData_notclean$Absenteeism.time.in.hours, ylab = "Absenteeism time in hours")
+b12 <- boxplot(absentData_notclean$Absenteeism.time.in.hours, 
+               ylab = "Absenteeism time in hours")
 
 ```
 
@@ -160,7 +162,8 @@ chooseK <- function(k, silFun, data) {
   plot <- ggplot(silData, aes(x=k, y=sil_score)) + geom_point() + 
     labs(x="Number of clusters (k)", y="Average silhouette width") + 
     geom_point(data=max_point, colour="red") +
-    geom_text(data=max_point, aes(label=ifelse(k==sil_max_k,max_lab,""), color="red"),hjust=1,vjust=1) +
+    geom_text(data=max_point, aes(label=ifelse(k==sil_max_k,max_lab,""),color="red"),
+              hjust=1,vjust=1) +
     theme(legend.position="none")
   
   # Return plot, silhouettes, and max k
@@ -249,8 +252,9 @@ pr_out <- prcomp(absentData, scale = TRUE)
 
 # Scree plot
 pve <- 100 * pr_out$sdev^2 / sum(pr_out$sdev^2)  
-plot(pve, type = "o",
-xlab = "Principal Component", col = "blue", ylab = "Percent of variance explained (PVE)")
+plot(pve, type = "o", cex.lab=0.75,
+  xlab = "Principal Component", col = "blue", 
+  ylab = "Percent of variance explained (PVE)")
 
 ```
 
@@ -295,7 +299,7 @@ kable(comparison)
 
 
 ## Introduction
-
+Companies rely on employees to carry out operations and achieve business goals. However, when employees are regularly absent from work, carrying out business can become expensive in terms of both finances and time [@absentArticle]. In this study, we aim to develop a model to understand and predict the underlying reasons behind absenteeism at work. The results will provide companies with direction on how to address these reasons and ultimately reduce rates of employee absenteeism.
 
 ## Methods
 The data in this study was sourced from the UC Irvine Machine Learning Repository [@absentData]. It contains `r ncol(absentData_full)` variables and `r nrow(absentData_full)` records of absenteeism at work from 2007 to 2010 at a courier company in Brazil [@absentData]. The data set includes a categorical variable indicating the reason for absenteeism and various columns describing the employee and their working conditions. The categorical variable for absenteeism combined with quantitative variables makes this a suitable data set for hierarchical and k-means clustering. Since we are only interested in clustering using quantitative variables, all categorical variables apart from the reason for absenteeism were removed from the data set, resulting in a total of `r ncol(absentData)` variables.
@@ -316,7 +320,7 @@ Average silhouette widths for cluster sizes 1 to 20; Left chart is for hierarchi
 
 Next, we performed k-means clustering. Similar to the previous method, we created silhouette plots for cluster sizes 2 to 20 and looked for the maximum average silhouette width. In this case, a cluster size of 17 produced the highest average as displayed in the center plot of @fig-kplots. We decided to use 17 clusters since other cluster sizes did not show strong improvements in terms of negative silhouette widths as shown in Supp. Materials @fig-kmc-plotsils.
 
-Finally, we performed principal component analysis (PCA) followed by hierarchical clustering. 8 principal components (PCs) and 14 clusters were used. We decided the PCs using @fig-pcahc-scree and selected the size where approximately 85% of the variation could be explained. We decided in a similar way as the previous two clustering methods. We plotted average silouette widths for sizes of 2 to 20. We then selected the cluster with the maximum silhouette score as illustrated in the right plot of @fig-kplots, and ensured that the negative silhouette width was minimal compared to other cluster sizes that produced a similar average silhouette width. This shown in Supp. Materials @fig-pcahc-plotsils.
+Finally, we performed principal component analysis (PCA) followed by hierarchical clustering. 8 principal components (PCs) and 14 clusters were used. As shown in @fig-pcahc-scree, we decided the PCs using a scree plot and selected the number of components where approximately 85% of the variation could be explained. We decided in a similar way as the previous two clustering methods. We plotted average silhouette widths for sizes of 2 to 20. We then selected the cluster with the maximum silhouette score as illustrated in the right plot of @fig-kplots, and ensured that the negative silhouette width was minimal compared to other cluster sizes that produced a similar average silhouette width. This is shown in Supp. Materials @fig-pcahc-plotsils.
 
 ```{r}
 #| label: fig-pcahc-scree
@@ -324,15 +328,13 @@ Finally, we performed principal component analysis (PCA) followed by hierarchica
 #| fig-cap: Scree plot
 #| output: TRUE
 #| message: FALSE
-#| fig-height: 3.5
-#| fig-width: 4
+#| fig-height: 3
+#| fig-width: 3.5
 ```
 
 
 ## Results
 @tbl-compare shows the results for the three clustering methods using Rand index and adjusted Rand index. All three methods produced a Rand index between 0.81 and 0.86. K-means clustering had the highest Rand index, followed closely by hierarchical clustering after PCA, and finally hierarchical clustering. While this suggests that k-means clustering produces the most similar data clustering compared to the given data labels, the adjusted Rand index is quite low compared to the other two methods. Hierarchical clustering produced the highest adjusted Rand index. All three methods produced a low adjusted Rand index value ranging from about 0.09 to 0.17.
-
-Thus, out of the three methods, the hierarchical methods performed the best. While Rand indices were high, adjusted Rand indices were low. This indicates that these results may not be reliable and the clustering methods we used may not explain the absenteeism at work very well. Further work is required to determine if another method, such as PCA followed by k-means clustering, would better describe absenteeism.
  
 ```{r}
 #| label: tbl-compare
@@ -343,6 +345,8 @@ Thus, out of the three methods, the hierarchical methods performed the best. Whi
 #| tbl-height: 3
 #| tbl-width: 3
 ```
+
+Thus, out of the three methods, the hierarchical methods performed the best. While Rand indices were high, adjusted Rand indices were low. This indicates that these results may not be reliable and the clustering methods we used may not explain and predict absenteeism at work very well. Further work is required to determine if another method, such as PCA followed by k-means clustering, would better model absenteeism.
 
 
 \newpage
@@ -394,7 +398,7 @@ Outliers were detected from the box plots of some variables
 ```
 ```{r fig-kmc-plotsil-3, ref.label="pcahc-plotsil-3", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
 ```
-Silhouette plots for cluster sizes k = 16, 17, and 18. k = 17 returned the maximum silhouette width values while k = 16 and 18 are neighbouring cluster sizes with a similar silhouette widths.
+Silhouette plots for cluster sizes k = 16 to 18. k = 17 returned the maximum silhouette width values while the remaining are cluster sizes with similar silhouette widths.
 :::
 
 ::: {#fig-pcahc-plotsils layout-ncol=3}
@@ -404,9 +408,8 @@ Silhouette plots for cluster sizes k = 16, 17, and 18. k = 17 returned the maxim
 ```
 ```{r fig-pcahc-plotsil-3, ref.label="pcahc-plotsil-3", output=TRUE, message=FALSE, fig.height=3.5, fig.width=3}
 ```
-Silhouette plots for cluster sizes k = 14, 15, and 16. k = 15 returned the maximum silhouette width values while k = 14 and 16 are neighbouring cluster sizes with a similar silhouette widths.
+Silhouette plots for cluster sizes k = 14 to 16. k = 15 returned the maximum silhouette width values while the remaining are cluster sizes with similar silhouette widths.
 :::
-
 
 
 ### Code
