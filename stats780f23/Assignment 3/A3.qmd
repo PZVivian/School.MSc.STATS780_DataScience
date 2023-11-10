@@ -275,7 +275,7 @@ The data in this study was sourced from the UC Irvine Machine Learning Repositor
 
 Prior to clustering, we first explored the data to check if data transformation was required. There were no missing values, unexpected data types, or unreasonable data types detected in the data. Of the 12 variables, 8 of them had outliers as shown in the box plots in Supp. Materials @fig-bplots. These were capped by the lower and upper fences of the interquartile range. We also scaled and centered the data.
 
-Once data transformation was done, we then applied clustering methods to the data. We first performed hierarchical clustering. Silhouette plots for cluster sizes 2 to 20 were created and the average silhouette widths were plotted as shown in the left plot in @fig-kplots. A cluster size of 20 resulted in the maximum average silhouette width, however we decided to use 10 clusters instead of 20 because the average widths are quite similar for a cluster size of 20 versus 10 as shown in @fig-kplots, and there are many negative silhouette widths (i.e. samples placed into the wrong cluster) for a cluster size of 20 as shown in @fig-kmc-plotsils.
+Once data transformation was done, we then applied clustering methods to the data. We first performed hierarchical clustering. Silhouette plots for cluster sizes 2 to 20 were created and the average silhouette widths were plotted as shown in the left plot of @fig-kplots below. A cluster size of 20 resulted in the maximum average silhouette width, however we decided to use 10 clusters instead of 20 because the average widths are quite similar for a cluster size of 20 versus 10 as shown in @fig-kplots, and there are many negative silhouette widths (i.e. samples placed into the wrong cluster) for a cluster size of 20 as shown in Supp. Materials @fig-hc-plotsils.
 
 ::: {#fig-kplots layout-ncol=3}
 ```{r fig-hc-kplot, ref.label="hc-kplot", output=TRUE, message=FALSE, fig.height=4, fig.width=4}
@@ -289,7 +289,7 @@ Average silhouette widths for cluster sizes 1 to 20; Left chart is for hierarchi
 
 Next, we performed k-means clustering. Similar to the previous method, we created silhouette plots for cluster sizes 2 to 20 and looked for the maximum average silhouette width. In this case, a cluster size of 17 produced the highest average as displayed in the centre plot of @fig-kplots. We decided to use 17 clusters since other cluster sizes did not show strong improvements in terms of negative silhouette widths as shown in Supp. Materials @fig-kmc-plotsils.
 
-Finally, we performed principal component analysis (PCA) followed by hierarchical clustering. 8 principal components (PCs) and 14 clusters were used. As shown in @fig-pcahc-scree, we decided the PCs using a scree plot and selected the number of components where approximately 85% of the variation could be explained. Similar to the previous two methods, we then created silhouette plots for cluster sizes of 2 to 20. We selected the cluster size with the maximum average silhouette width as illustrated in the right plot of @fig-kplots. We ensured that the negative silhouette width was minimal or comparable to other cluster sizes that produced a similar average silhouette width. This is shown in Supp. Materials @fig-pcahc-plotsils.
+Finally, we performed principal component analysis (PCA) followed by hierarchical clustering. 8 principal components (PCs) and 14 clusters were used. @fig-pcahc-scree shows the scree plot used to select the number of PCs. While the "elbow" of the plot appears to be at approximately 3 PCs, we decided to use 8 PCs instead because the fourth to seventh PCs still explained a large amount of variation (between 5 to 10% each). At the eighth PC, approximately 85% of the variation is explained by all the PCs. To select the cluster size, we created silhouette plots for cluster sizes 2 to 20, as done previously for the other two clustering methods. We selected the cluster size with the maximum average silhouette width as illustrated in the right plot of @fig-kplots. We ensured that the negative silhouette width was minimal or comparable to other cluster sizes that produced a similar average silhouette width as shown in Supp. Materials @fig-pcahc-plotsils.
 
 ```{r}
 #| label: fig-pcahc-scree
@@ -349,7 +349,7 @@ Finally, we performed principal component analysis (PCA) followed by hierarchica
 Outliers were detected from the box plots of some variables
 :::
 
-::: {#fig-kmc-plotsils layout-ncol=2}
+::: {#fig-hc-plotsils layout-ncol=2}
 ```{r fig-hc-plotsil-1, ref.label="hc-plotsil-1", output=TRUE, message=FALSE, fig.height=3.5, fig.width=4}
 ```
 ```{r fig-hc-plotsil-2, ref.label="hc-plotsil-2", output=TRUE, message=FALSE, fig.height=3.5, fig.width=4}
