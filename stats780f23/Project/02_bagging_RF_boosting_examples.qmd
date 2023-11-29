@@ -1,0 +1,577 @@
+---
+title: Bagging, Random Forest, Boosting, BART
+author: "Pratheepa Jeganathan"
+date: "2023/11/01"
+format: html
+editor: visual
+execute: 
+  echo: true
+  message: false
+  warning: false
+bibliography: references.bib
+---
+
+Note:
+
+-   ISLR Lab 8.3 \[R reference\]
+
+-   ISLP Lab 8.3 \[Python reference\]
+
+We load the packages required for this workflow.
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(magrittr)
+library(readr)
+library(ggplot2)
+library(ISLR2)
+library(MASS)
+library(tree) # CART
+library(randomForest) # Bagging and RF
+library(gbm) # Boosting
+library(BART)
+library(caret)
+```
+
+## Data
+
+Consider `Boston` dataset in `MASS` package.
+
+50%/50% training data and test data.
+
+```{r}
+#set.seed(1)
+train <- sample(1:nrow(Boston), nrow(Boston) / 2)
+```
+
+## Regression tree
+
+Let's use regression tree.
+
+```{r}
+tree.boston <- tree(
+  medv ~ ., 
+  Boston, 
+  subset = train) 
+summary(tree.boston)
+```
+
+Plot the tree.
+
+```{r}
+plot(tree.boston)
+text(tree.boston, pretty = 0)
+```
+
+Prune the tree use cross-validation to find the cost complexity parameter.
+
+```{r}
+cv.boston <- cv.tree(tree.boston)
+
+plot(
+  cv.boston$size, 
+  cv.boston$dev, 
+  type = "b")
+```
+
+Pruning choose the most complex tree. So we don't prune the tree.
+
+Predictions on the test set.
+
+```{r}
+yhat <- predict(
+  tree.boston, 
+  newdata = Boston[-train, ]
+  ) 
+
+boston.test <- Boston[-train, "medv"]
+
+# plot(boston.test, yhat)
+# abline(0, 1)
+
+mean((yhat - boston.test)^2)
+
+
+```
+
+square root of the MSE
+
+```{r}
+sqrt(mean((yhat - boston.test)^2))
+
+```
+
+indicating that this model leads to test predictions that are (on average) within approximately \$ `r round(sqrt(mean((yhat - boston.test)^2))*1000, 0)` of the true median home value for the census tract.
+
+## Bagging
+
+We can use `randomForest()` in `randomForest` package.
+
+Bagging is a special case of a random forest with $m=p$, where $m$ is the number of predictors at each split and $p$ is the number of predictors.
+
+```{r}
+
+dim(Boston)
+set.seed(1)
+bag.boston <- randomForest(
+  medv ~ ., 
+  data = Boston, 
+  subset = train, 
+  mtry = 13, 
+  importance = TRUE
+  )
+```
+
+```{r}
+bag.boston
+
+```
+
+mtry = 13 indicates that all 13 predictors should be considered for each split of the tree.
+
+OOB
+
+```{r}
+plot(bag.boston)
+```
+
+How well does this bagged model perform on the test set?
+
+```{r}
+yhat.bag <- predict(
+  bag.boston,
+  newdata = Boston[-train,])
+
+round(mean((yhat.bag - boston.test)^2), digits = 2)
+
+round(sqrt(mean((yhat.bag - boston.test)^2)), 
+      digits = 2)
+
+```
+
+-   Test set MSE in bagging is smaller than pruned (single) tree.
+
+Change the number of trees grown by `randomForest()` using the `ntree` argument. Then, check the test error.
+
+```{r}
+bag.boston <- randomForest(
+  medv ~ ., 
+  data = Boston, 
+  subset = train, 
+  mtry = 13, 
+  ntree = 10
+  )
+yhat.bag <- predict(
+  bag.boston, 
+  newdata = Boston[-train, ]
+  ) 
+mean((yhat.bag - boston.test)^2)
+
+sqrt(mean((yhat.bag - boston.test)^2))
+```
+
+## Random forest
+
+By default, randomForest() uses $p/3$ variables at a split when building a random forest of regression trees, and $\sqrt{p}$ variables at a split when building a random forest of classification trees.
+
+Here we use `mtry = 6`.
+
+```{r}
+set.seed(1)
+rf.boston <- randomForest(
+  medv ~ ., data = Boston,
+  subset = train, 
+  mtry = 6, 
+  importance = TRUE
+  )
+yhat.rf <- predict(
+  rf.boston, newdata = Boston[-train, ]
+  ) 
+
+mean((yhat.rf - boston.test)^2)
+sqrt(mean((yhat.rf - boston.test)^2))
+```
+
+The test set MSE is `r round(mean((yhat.rf - boston.test)^2), 2)`; this indicates that random forests yielded an improvement over bagging in this case.
+
+In practice, we can choose the number of variables to select at each split (mtry) using cross-validation.
+
+### Importance of each variable
+
+```{r}
+importance(rf.boston)
+```
+
+-   First column - mean decrease of accuracy in predictions on the out of bag samples when a given variable is permuted.
+
+-   Second column - measure of the total decrease in node impurity that results from splits over that variable, averaged over all trees.
+
+    -   regression trees - training RSS
+    -   classification - deviance
+
+Plots of these importance measures
+
+```{r}
+varImpPlot(rf.boston)
+
+```
+
+Across all of the trees considered in the random forest, the wealth of the community (lstat) and the house size (rm) are by far the two most important variables.
+
+## Boosting
+
+We can use `gbm()` in `gbm` package.
+
+Read the package vignette - boosting algorithms may be different loss functions, base models, and optimization schemes.
+
+```{r eval=FALSE}
+utils::browseVignettes("gbm")
+```
+
+For regression, we choose `distribution = "gaussian"`.
+
+For binary classification problem we would choose `distribution = "bernoulli"`.
+
+`n.trees = 5000` - number of trees
+
+`interaction.depth = 4`- limits the depth of each tree.
+
+```{r}
+set.seed(1)
+boost.boston <- gbm(
+  medv ~ ., 
+  data = Boston[train, ],
+  distribution = "gaussian", 
+  n.trees = 5000, 
+  interaction.depth = 4
+  )
+```
+
+The relative influence plot and the relative influence statistics.
+
+```{r}
+summary(boost.boston, plotit = FALSE)
+summary(boost.boston, plotit = TRUE)
+```
+
+`lstat` and `rm` are the most important variables.
+
+Partial dependence plots - marginal effect of the selected variables on the response after integrating out the other variables.
+
+In this case, as we might expect, median house prices are increasing with rm and decreasing with lstat.
+
+```{r}
+plot(boost.boston, i = "rm")
+plot(boost.boston, i = "lstat")
+```
+
+Use the boosted model to predict medv on the test set.
+
+```{r}
+yhat.boost <- predict(
+  boost.boston,
+  newdata = Boston[-train, ], 
+  n.trees = 5000
+  )
+mean((yhat.boost - boston.test)^2)
+
+sqrt(mean((yhat.boost - boston.test)^2))
+```
+
+This test MSE is superior to the test MSE of random forests and bagging.
+
+Default learning parameter is $\lambda = 0.001$.
+
+Let's consider $\lambda = 0.2$
+
+```{r}
+boost.boston <- gbm(
+  medv ~ ., 
+  data = Boston[train, ], 
+  distribution = "gaussian",
+  n.trees = 5000, 
+  interaction.depth = 4, 
+  shrinkage = 0.2, 
+  verbose = F
+  )
+
+yhat.boost <- predict(
+  boost.boston,
+  newdata = Boston[-train, ], 
+  n.trees = 5000
+  )
+mean((yhat.boost - boston.test)^2) 
+
+sqrt(mean((yhat.boost - boston.test)^2) )
+```
+
+$\lambda = 0.2$ leads to a lower test MSE than $\lambda = 0.001$.
+
+### Model selection? Use CV
+
+```{r cache=TRUE}
+# we can select d or B or lambda using CV
+dCVBoosting <- function(d){
+  boost_boston_cv <- gbm(
+  medv ~.,
+  data = Boston[train, ],
+  distribution = "gaussian",
+  n.trees = 5000,
+  interaction.depth = d,
+  shrinkage = 0.1, 
+  cv.folds = 5
+  )
+  return(
+    boost_boston_cv$cv.error[length(
+      boost_boston_cv$cv.error
+      )]
+  )
+  }
+```
+
+```{r}
+set.seed(1)
+cv_val <- numeric(0)
+for(x in 1:4){
+  cv_val[x] <- dCVBoosting(x)
+}
+
+cv_error_d <- lapply(as.list(1:4), function(x){
+  dCVBoosting(x)
+}) %>% unlist()
+
+
+df_Boosting_d <- tibble(d = 1:4, cv_error_d = cv_error_d)
+```
+
+```{r}
+ggplot(data = df_Boosting_d, 
+       aes(x = d, y = cv_error_d)) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(
+    breaks=c(seq(1,5))
+    )
+```
+
+Note: If $d = 1$, each tree is stump - consisting of a single splitter. That is, boosted ensemble is fitting an additive model because each $\hat{f}^{b}$ involves only a single variable.
+
+## Bayesian Additive Regression Trees
+
+We can use functions in `BART` package.
+
+`gbart()` - quantitative response.
+
+`lbart()` and `pbart()` - binary response.
+
+Create matrices of predictors for the training and test data
+
+```{r}
+x <- Boston[, 1:12]
+y <- Boston[, "medv"] 
+
+xtrain <- x[train, ] 
+ytrain <- y[train]
+
+xtest <- x[-train, ]
+ytest <- y[-train]
+
+set.seed(1)
+bartfit <- gbart(
+  xtrain, 
+  ytrain, 
+  x.test = xtest
+  )
+```
+
+Compute the test error
+
+```{r}
+yhat.bart <- bartfit$yhat.test.mean 
+mean((ytest - yhat.bart)^2)
+```
+
+On this data set, the test error of BART is lower than the test error of random forests and boosting.
+
+Check how many times each variable appeared in the collection of trees.
+
+```{r}
+ord <- order(
+  bartfit$varcount.mean, 
+  decreasing = T
+  ) 
+bartfit$varcount.mean[ord]
+```
+
+## Data - Wine dataset
+
+Bagging, RF, and Boosting for classification trees.
+
+-   Proceeds in a very similar pattern to bagging, RF for regression trees.
+
+-   We need a different way to combine the predictions from the $B$ bootstrap samples; this can be done, e.g., via majority vote.
+
+-   Rather than looking at MSE, we look at misclassification rate.
+
+## Bagging
+
+```{r}
+data(wine, package="gclus")
+names(wine)
+
+#readr::write_csv(x = wine, file = "wine.csv")
+
+wine <- mutate(wine, Class = factor(Class))
+levels(wine$Class)
+```
+
+```{r}
+set.seed(1)
+index <- caret::createDataPartition(wine$Class, p = 0.5, list = FALSE)
+
+wine_train <- slice(wine, index)
+wine_test <- slice(wine, -index) 
+
+test_class <- pull(wine_test, Class)
+
+```
+
+```{r}
+bag_wine <- randomForest(
+  Class~.,
+  data = wine,
+  subset = index,
+  mtry = 13,
+  importance = TRUE,
+  type = "class"
+  )
+
+```
+
+```{r}
+bag_wine
+```
+
+OOB confusion matrix is also printed.
+
+```{r}
+plot(bag_wine)
+```
+
+OOB error for each class (colors) and overall OOB error.
+
+Confusion matrix for test set and test error.
+
+```{r}
+wine_pred <- predict(
+  bag_wine,
+  wine_test,
+  type="class"
+)
+
+tab <- table(test_class, wine_pred)
+tab
+1- sum(diag(tab))/sum(tab)
+```
+
+We have multi-class classification problem. Different variables can be important to predict different classes. First three columns are importance measure for each wine type.
+
+```{r}
+importance(bag_wine) %>% round(digits = 2)
+```
+
+```{r}
+varImpPlot(bag_wine)
+```
+
+## Random forest
+
+Fitting the model with $m = 3$.
+
+```{r}
+set.seed(1)
+rf_wine <- randomForest(
+  Class~.,
+  data=wine,
+  subset=index,
+  mtry=3,
+  importance=TRUE,
+  type="class"
+  )
+```
+
+Print the RF with $m=3$.
+
+```{r}
+rf_wine
+```
+
+Compute test error of RF with $m=3$.
+
+```{r}
+wine_pred_rf <- predict(
+  rf_wine,
+  wine_test,
+  type="class"
+  )
+tab_wine_RF <- table(test_class, wine_pred_rf)
+tab_wine_RF
+1- sum(diag(tab_wine_RF))/sum(tab_wine_RF)
+```
+
+We can use CV to do model selection.
+
+We can quantify the importance of variables in predicting wine types.
+
+```{r}
+importance(rf_wine)
+varImpPlot(rf_wine)
+
+```
+
+## Boosting
+
+Boosted model with $B =5000$, $d = 4$, $\lambda = .1$.
+
+```{r}
+set.seed(1)
+boost_wine <- gbm(
+  Class~.,
+  data = wine_train,
+  distribution = "multinomial",
+  n.trees = 5000,
+  interaction.depth = 4,
+  shrinkage=0.1
+  )
+```
+
+```{r}
+summary(boost_wine)
+```
+
+Test error for the boosted model with $B =5000$, $d = 4$, $\lambda = .1$.
+
+```{r}
+
+# Using type="response" means 
+# that class membership probabilities 
+# are returned for each observation 
+wine_pred_boost_response <- predict(
+  boost_wine,
+  newdata = wine_test,
+  n.trees=5000,
+  distribution="multinomial",
+  type="response"
+  )
+
+wine_pred_boost <- apply(
+  wine_pred_boost_response, 1, which.max
+  )
+tab_wine_boost <- table(test_class, wine_pred_boost)
+tab_wine_boost
+1- sum(diag(tab_wine_boost))/sum(tab_wine_boost)
+```
+
+## Further computing references
+
+* [XGboost](https://xgboost.readthedocs.io/en/stable/index.html)

@@ -46,84 +46,121 @@ knitr::opts_chunk$set(
 
 ## Motivation
 
--   Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate blood sugar levels.
+-   Diabetes is a disease that occurs when the body cannot effectively produce or use insulin to regulate blood sugar levels.
     -   422 million people have diabetes worldwide and 1.5 million deaths that occur every year are linked to diabetes [@factsWHO].
--   Machine learning techniques can be used to predict diabetes.
-    -   Different studies suggest different techniques to most accurately predict diabetes.
-    -   Islam et al.'s study compares 3 different techniques and states that their decision tree produced the most accurate results [-@diabetesStudy]. The study's data is publicly available for analysis.
--   *GOAL*: Reproduce the decision tree in Islam et al.'s study to verify accuracy and compare with a neural network to assess whether this would be more accurate than a tree-based model.
+-   Machine learning techniques are being used to predict diabetes.
+    -   Islam et al.'s study compares 3 different techniques and states that their decision tree produced the most accurate results [-@diabetesStudy].
+-   *GOAL*: 
+    - Reproduce the decision tree in Islam et al.'s study to verify accuracy
+    - Develop an SVM model and assess whether an SVM better predicts diabetes compared to a decision tree
 
-## Data (1 slide)
+
+## Data
 
 -   Collected by Islam et al. from a hospital in Bangladesh [-@diabetesStudy] and openly published on Kaggle [@diabetesData].
--   Data contains 17 variables:
-    -   Response: Binary variable called class that indicates whether the patient has a positive (1) or negative risk (0) for diabetes
-    -   Predictors: 1 quantitative variable (age) + 16 categorical variables describing the patient and if they experience common symptoms related to the disease, such as weakness, itching, and obesity
+-   Data contains 17 variables and 520 observations
+    -   Response is binary and indicates whether the patient has a positive or negative risk for diabetes
+    -   Other variables describe the patient and presence of diabetes symptoms (ex. weakness, obesity)
+-   No missing data, no correlation between variables
+-   Outliers for age variable capped at 79 years using 1.5 IQR rule
+-   Imbalance in response variable
 
--   
+::: {layout-ncol=2}
+```{r}
+#| fig-align: 'center'
+#| out-width: '80%'
+#| echo: false
+#| fig-cap: "Box plot of age"
+knitr::include_graphics("AgeBoxplot.png")
+```
+```{r}
+#| fig-align: 'center'
+#| out-width: '80%'
+#| echo: false
+#| fig-cap: "Bar chart of response"
+knitr::include_graphics("BarChartClass.png")
+```
 
--   Source?
--   Is it a data frame?
-    -   What is in rows?
-    -   What is in columns?
--   Results of exploratory analysis?
-    -   Data types, type of response if any?
-    -   Correlation analysis?
-    -   Outliers?
-    -   Missingness?
-    -   Data transformation, etc. ?
--   $n>p$ or $n<p$ or $n \approx p$?
--   etc. ?
+:::
 
-## Data (Example)
+## Methods (Decision Tree)
 
+- Data was split in half for the training and testing sets
+- First fit of the decision tree had a terminal node size of 16 with 94.62% accuracy
+- Cross validation suggested a size of 12 terminal nodes instead
+  - Accuracy remained the same
+  - Pruning was still applied to reduce the cost complexity
+- Random forest ensembling with m = 4 randomly sampled variables improved the accuracy to 98.85%
+
+```{r}
+#| fig-align: 'center'
+#| out-width: '65%'
+#| echo: false
+#| fig-cap: "Decision tree after cross validation"
+knitr::include_graphics("DecisionTree.png")
+```
+
+
+## Methods (SVM)
+- The data was first scaled to ensure units are between 0 and 1 across all variables
+- SVM was performed multiple times using kernel adjustment and cross validation for cost. Best models per kernel:
+  - Linear - cost = 3, accuracy = 93.85%
+  - Polynomial: cost = 150, accuracy = 95.77% 
+  - Radial basis function (RBF): cost = 50, accuracy = 97.69% 
+
+::: {layout-ncol=3}
 ```{r}
 #| fig-align: 'center'
 #| out-width: '100%'
 #| echo: false
-#| fig-cap: "Source: xxx"
-knitr::include_graphics("data9.png")
+#| fig-cap: "CV for linear SVMs"
+knitr::include_graphics("SVMLinear.png")
+```
+```{r}
+#| fig-align: 'center'
+#| out-width: '100%'
+#| echo: false
+#| fig-cap: "CV for polynomial SVMs"
+knitr::include_graphics("SVMPoly.png")
+```
+```{r}
+#| fig-align: 'center'
+#| out-width: '100%'
+#| echo: false
+#| fig-cap: "CV for RBF SVMs"
+knitr::include_graphics("SVMRBF.png")
+```
+:::
+
+
+
+## Results
+
+- Both methods had high accuracy
+- Random forest outperformed SVM
+- In terms of Islam et. al's study [-@diabetesStudy], decision trees remain the best method to predict diabetes compared to SVM and 2 other methods
+- Patients who are male, have poluria, and have polydispia are at a greater risk for diabetes
+
+```{r}
+#| fig-align: 'center'
+#| out-width: '60%'
+#| echo: false
+#| fig-cap: "Importance of variables from random forest"
+knitr::include_graphics("RandomForestImportance.png")
 ```
 
-$K_{ij}$ abundance of $i$-taxon in $j$-th sample.
+## Discussion
 
-## Methods (2 slide)
-
--   What are the two methods you compared?
--   Why those two methods?
--   Algorithms of the methods?
--   Any statistical transformation used?
--   Any other pre-processing (feature engineering) used?
--   Any feature selection (filter, or wrapper, or embedded) used?
--   etc.?
-
-## Methods (Example)[^1]
-
-[^1]: An introduction to statistical learning [@james2013introduction]
-
--   KNN and DT for classification.
--   Decision trees - partition the predictor space into simple regions.
-    -   Predict $y_{0}$ of a new data point $x_{0}$ using the response of training observations in the region to which $x_{0}$ belongs.
-    -   How to find the partitions?
--   KNN -
-
-## Results (1 slide)
-
--   What are the results of applying the methods?
-    -   Visualize the results?
-    -   Compare the methods using graphs?
-    -   Interpret the model/results?
-    -   etc.?
-
-## Discussion (1 slide)
-
--   Discuss problems related to the methods and data -
-    -   Curse of dimensionality?
-    -   Multiple data types?
-    -   Interpretablity?
-    -   Reproducibility?
-    -   Stability?
-    -   etc. ?
+- Random forest
+  - Stability of the results may be improved by increasing the number of trees
+- SVM model
+  - Selecting the best cost is a balance between bias and variance.
+    - The linear model had a cost of 3 -> high bias and low variance
+    - The polynomial model had a cost of 150 -> low bias and high variance
+    - Both may not be a great fit despite having high accuracy; RBF is more balanced
+    - Repeated cross-validation may give help us choose better costs
+  - Selecting the best kernel can be a challenge for SVM models due to the risk of overfitting
+    - Further investigation on the pattern of the data may be useful to improve kernel tuning
 
 ## 
 

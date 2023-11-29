@@ -21,11 +21,16 @@ geometry:
   - margin = 1in
 linestretch: 1.5
 ---
-
+## Top of code
 ```{r setup}
 library(knitr)
 library(tidyverse)
 library(corrplot)
+library(tree)
+library(randomForest)
+library(nnet)
+library(torch)
+library(luz)
 
 ```
 
@@ -36,7 +41,7 @@ diabetes_int <- diabetes_raw %>%
   mutate(gender = as.integer(ifelse(gender=="Male",1,
                             ifelse(gender=="Female",0,
                             NA))))
-diabetes <- diabetes_raw %>% 
+diabetes_pretransform <- diabetes_raw %>% 
   mutate(gender = as.factor(ifelse(gender=="Male",1,
                             ifelse(gender=="Female",0,
                             NA))),
@@ -78,9 +83,9 @@ kable(data_summary)
 
 ```{r missing, output=FALSE}
 # Check for missing data
-nulls <- sapply(diabetes, 
+nulls <- sapply(diabetes_pretransform, 
                 function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
-blanks <- sapply(diabetes, 
+blanks <- sapply(diabetes_pretransform, 
                  function(col){ifelse(is.na(sum(col == "")), 0, sum(col == ""))})
 kable(data.frame(Nulls=sum(nulls), Blanks=sum(blanks)))
 
@@ -88,7 +93,7 @@ kable(data.frame(Nulls=sum(nulls), Blanks=sum(blanks)))
 
 ```{r boxplot, output=FALSE}
 # Boxplot of continuous variable
-bplot <- ggplot(diabetes, aes(y = age)) + geom_boxplot() + labs(x="",y="Age") +
+bplot <- ggplot(diabetes_pretransform, aes(y = age)) + geom_boxplot() + labs(x="",y="Age") +
   theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
 bplot_a1 <- as.integer(unlist(ggplot_build(bplot)$data)["ymax"])
 bplot + geom_hline(yintercept = bplot_a1, linetype="dotted", color="red") + 
@@ -96,82 +101,82 @@ bplot + geom_hline(yintercept = bplot_a1, linetype="dotted", color="red") +
             show.legend = FALSE)
 
 # Cap outliers
-diabetes_no_outliers <- diabetes %>% mutate(age = ifelse(age > bplot_a1, bplot_a1, age))
+diabetes <- diabetes_pretransform %>% mutate(age = ifelse(age > bplot_a1, bplot_a1, age))
 
 ```
 
 ```{r barchart-1, output=FALSE}
 # Barplots for each categorical variable
-ggplot(diabetes, aes(x = gender)) + geom_bar() + labs(y = "Count", x = "Gender")
+ggplot(diabetes_pretransform, aes(x = gender)) + geom_bar() + labs(y = "Count", x = "Gender")
 ```
 
 ```{r barchart-2, output=FALSE}
-ggplot(diabetes, aes(x = polyuria)) + geom_bar() + labs(y = "Count", x = "Polyuria")
+ggplot(diabetes_pretransform, aes(x = polyuria)) + geom_bar() + labs(y = "Count", x = "Polyuria")
 ```
 
 ```{r barchart-3, output=FALSE}
-ggplot(diabetes, aes(x = polydipsia)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = polydipsia)) + geom_bar() + 
   labs(y = "Count", x = "Polydipsia")
 ```
 
 ```{r barchart-4, output=FALSE}
-ggplot(diabetes, aes(x = sudden_weight_loss)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = sudden_weight_loss)) + geom_bar() + 
   labs(y = "Count", x = "Sudden weight loss")
 ```
 
 ```{r barchart-5, output=FALSE}
-ggplot(diabetes, aes(x = weakness)) + geom_bar() + labs(y = "Count", x = "Weakness")
+ggplot(diabetes_pretransform, aes(x = weakness)) + geom_bar() + labs(y = "Count", x = "Weakness")
 ```
 
 ```{r barchart-6, output=FALSE}
-ggplot(diabetes, aes(x = polyphagia)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = polyphagia)) + geom_bar() + 
   labs(y = "Count", x = "Polyphagia")
 ```
 
 ```{r barchart-7, output=FALSE}
-ggplot(diabetes, aes(x = genital_thrush)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = genital_thrush)) + geom_bar() + 
   labs(y = "Count", x = "Genital thrush")
 ```
 
 ```{r barchart-8, output=FALSE}
-ggplot(diabetes, aes(x = visual_blurring)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = visual_blurring)) + geom_bar() + 
   labs(y = "Count", x = "Visual blurring")
 ```
 
 ```{r barchart-9, output=FALSE}
-ggplot(diabetes, aes(x = itching)) + geom_bar() + labs(y = "Count", x = "Itching")
+ggplot(diabetes_pretransform, aes(x = itching)) + geom_bar() + labs(y = "Count", x = "Itching")
 ```
 
 ```{r barchart-10, output=FALSE}
-ggplot(diabetes, aes(x = irritability)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = irritability)) + geom_bar() + 
   labs(y = "Count", x = "Irritability")
 ```
 
 ```{r barchart-11, output=FALSE}
-ggplot(diabetes, aes(x = delayed_healing)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = delayed_healing)) + geom_bar() + 
   labs(y = "Count", x = "Delayed healing")
 ```
 
 ```{r barchart-12, output=FALSE}
-ggplot(diabetes, aes(x = partial_paresis)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = partial_paresis)) + geom_bar() + 
   labs(y = "Count", x = "Partial paresis")
 ```
 
 ```{r barchart-13, output=FALSE}
-ggplot(diabetes, aes(x = muscle_stiffness)) + geom_bar() + 
+ggplot(diabetes_pretransform, aes(x = muscle_stiffness)) + geom_bar() + 
   labs(y = "Count", x = "Muscle stiffness")
 ```
 
 ```{r barchart-14, output=FALSE}
-ggplot(diabetes, aes(x = alopecia)) + geom_bar() + labs(y = "Count", x = "Alopecia")
+ggplot(diabetes_pretransform, aes(x = alopecia)) + geom_bar() + labs(y = "Count", x = "Alopecia")
 ```
 
 ```{r barchart-15, output=FALSE}
-ggplot(diabetes, aes(x = obesity)) + geom_bar() + labs(y = "Count", x = "Obesity")
+ggplot(diabetes_pretransform, aes(x = obesity)) + geom_bar() + labs(y = "Count", x = "Obesity")
 ```
 
 ```{r barchart-16, output=FALSE}
-ggplot(diabetes, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
+ggplot(diabetes_pretransform, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
 
 ```
 
@@ -180,6 +185,340 @@ ggplot(diabetes, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
 corr_matrix <- cor(diabetes_int)
 corrplot(round(corr_matrix,2), method = "number", number.cex=0.75)
 ```
+
+```{r data-split, output=FALSE}
+# Split the data into test and training set
+set.seed(2023)
+trainIndex <- sample(1:nrow(diabetes), round(nrow(diabetes)/2, 0), replace = FALSE)
+diabetesTrain <- diabetes[trainIndex, ]
+diabetesTest <- diabetes[-trainIndex, ]
+
+# Pull out classes for testing (vector version)
+diabetesTest_class <- diabetes$class[-trainIndex]
+
+# Pull out classes for testing (matrix version)
+classLabs <- pull(diabetes, class) %>% class.ind()
+diabetesTrain_class_mat <- classLabs[trainIndex,]
+diabetesTest_class_mat <- classLabs[-trainIndex,]
+
+```
+
+```{r tree-fit1, output=FALSE}
+# Fit the classification tree
+treeDiabetes <- tree(
+  class ~ ., 
+  data = diabetes, 
+  subset = trainIndex,
+  split = "deviance")
+
+# Summary of tree results
+summary(treeDiabetes)
+table(diabetes$class)/sum(table(diabetes$class))
+
+# Graphical summary of fitted tree
+plot(treeDiabetes)
+text(treeDiabetes, pretty = 0) #include the category names for any qualitative predictors
+
+# Explore the fitted tree
+print(treeDiabetes)
+```
+
+```{r tree-fit1-pred, output=FALSE}
+# Use the fitted tree to predict results for the test data
+treeDiabetesPred <- predict(treeDiabetes, diabetesTest, type = "class")
+head(treeDiabetesPred)
+table(treeDiabetesPred, diabetesTest_class)
+
+# Percent that was correctly predicted
+(table(treeDiabetesPred, diabetesTest_class)[1,1] + 
+    table(treeDiabetesPred, diabetesTest_class)[2,2])/sum(table(treeDiabetesPred, diabetesTest_class))
+```
+
+```{r tree-fit2-mrate, output=FALSE}
+# Get misclassification rate of different tree sizes to use for pruning
+set.seed(2023)
+diabetesCV <- cv.tree(treeDiabetes, FUN = prune.misclass)
+names(diabetesCV)
+diabetesCV
+
+plot(diabetesCV$size, diabetesCV$dev, type = "b") 
+plot(diabetesCV$k, diabetesCV$dev, type = "b")
+```
+
+```{r tree-fit2-prune, output=FALSE}
+# Prune the tree using the size that produces the lowest misclassification rate
+treeDiabetesPrune <- prune.misclass(treeDiabetes, best = 12)
+plot(treeDiabetesPrune)
+text(treeDiabetesPrune, pretty = 0)
+```
+```{r tree-fit2-pred, output=FALSE}
+# Use the fitted tree to predict results for the test data
+treeDiabetesPrunePred <- predict(treeDiabetesPrune, diabetesTest, type = "class")
+head(treeDiabetesPrunePred)
+table(treeDiabetesPrunePred, diabetesTest_class)
+
+# Percent that was correctly predicted
+(table(treeDiabetesPrunePred, diabetesTest_class)[1,1] + 
+    table(treeDiabetesPrunePred, diabetesTest_class)[2,2])/sum(table(treeDiabetesPrunePred, diabetesTest_class))
+```
+
+```{r tree-rforest, output=FALSE}
+# Random forest to improve results
+set.seed(2023)
+diabetesRF <- randomForest(
+  class ~ ., data = diabetes,
+  subset = trainIndex, 
+  mtry = 4, 
+  importance = TRUE
+  )
+yhatRF <- predict(
+  diabetesRF, newdata = diabetesTest
+  )
+
+(table(yhatRF, diabetesTest_class)[1,1] + 
+    table(yhatRF, diabetesTest_class)[2,2])/sum(table(yhatRF, diabetesTest_class))
+```
+
+```{r tree-rforest-imp, output=FALSE}
+# Importance of the variables
+varImpPlot(diabetesRF)
+
+```
+
+
+```{r network, output=FALSE}
+# Use trial and error to find the size and decay that produces a minimal test error rate.
+
+## TRY 1 ##
+# Build a single layer neural network
+diabetesNN <- nnet(
+  x = diabetesTrain,
+  y = diabetesTrain_class_mat,
+  size = 1, 
+  decay = 2, 
+  softmax = TRUE)
+# Predict using the neural network and compute the test error rate
+diabetesNN_pred <- predict(diabetesNN, diabetesTest, type="class")
+tab <- table(slice(diabetes, -trainIndex) %>% pull(class), diabetesNN_pred)
+1-sum(diag(tab))/sum(tab)
+
+```
+
+```{r}
+## TRY 2 ##
+# Build a single layer neural network
+diabetesNN <- nnet(
+  x = diabetesTrain, 
+  y = diabetesTrain_class_mat, 
+  size = 15, 
+  decay = 2, 
+  softmax = TRUE)
+# Predict using the neural network and compute the test error rate
+diabetesNN_pred <- predict(diabetesNN, diabetesTest, type="class")
+tab <- table(slice(diabetes, -trainIndex) %>% pull(class), diabetesNN_pred)
+1-sum(diag(tab))/sum(tab)
+
+```
+
+```{r}
+modelnn <- nn_module(
+  initialize = function() {
+    self$linear1 <- nn_linear(in_features = 17, out_features = 8)
+    self$linear2 <- nn_linear(in_features = 8, out_features = 4)
+    self$linear3 <- nn_linear(in_features = 4, out_features = 2)
+    
+    self$drop1 <- nn_dropout(p = 0.4)
+    self$drop2 <- nn_dropout(p = 0.3)
+    
+    self$activation <- nn_relu()
+    
+  },
+  forward = function(x) {# specify the order to call the layers
+    x %>% 
+      
+      self$linear1() %>% 
+      self$activation() %>% 
+      self$drop1() %>% 
+      
+      self$linear2() %>% 
+      self$activation() %>% 
+      self$drop2() %>% 
+      
+      self$linear3()
+  }
+)
+```
+
+```{r}
+print(modelnn())
+```
+
+```{r}
+modelnn <- modelnn %>% 
+  setup(
+    loss = nn_cross_entropy_loss(),
+    optimizer = optim_rmsprop, 
+    metrics = list(luz_metric_accuracy())
+  )
+```
+
+```{r}
+# Change to torch data set
+diabetesTrain_tensor <- torch_tensor(data.matrix(diabetesTrain)-1, dtype = torch_float())
+
+# Run neural network
+system.time(
+   fitted <- modelnn %>%
+      fit(
+        data = diabetesTrain_tensor, 
+        epochs = 2, # max epochs
+        valid_data = 0.5,
+        dataloader_options = list(batch_size = 20),#how many samples per batch to load
+        verbose = FALSE
+      )
+ )
+plot(fitted)
+```
+
+```{r}
+accuracy <- function(pred, truth) {
+   mean(pred == truth) 
+  }
+
+# gets the true classes from all observations in test_ds.
+truth <- sapply(
+  seq_along(test_ds), function(x) test_ds[x][[2]]
+  )
+
+fitted %>% 
+  predict(test_ds) %>% 
+  torch_argmax(dim = 2) %>%  # the predicted class is the one with higher 'logit'.
+  as_array() %>% # we convert to an R object
+  accuracy(truth)
+```
+
+```{r}
+write.csv(diabetesTrain, "diabetesTrain.csv", row.names=FALSE)
+write.csv(diabetesTest, "diabetesTest.csv", row.names=FALSE)
+```
+
+
+## SVM
+```{r}
+library(e1071)
+
+# Scale the data so the values are from 0 to 1
+normalize0to1 <- function(data){
+  (data-min(data))/(max(data)-min(data))
+}
+diabetesTrain_Scaled <- diabetesTrain
+diabetesTest_Scaled <- diabetesTest
+diabetesTrain_Scaled$age <- normalize0to1(diabetesTrain$age)
+diabetesTest_Scaled$age <- normalize0to1(diabetesTest$age)
+
+# Fit an SVM model
+set.seed(2023)
+svmfit <- svm(
+  class ~ ., 
+  data = diabetesTrain_Scaled, 
+  kernel = "linear",
+  cost = 10, 
+  scale = FALSE
+  )
+
+ypred <- predict(svmfit, diabetesTest_Scaled)
+table(predict = ypred, truth = diabetesTest_Scaled$class)
+
+(table(ypred, diabetesTest_class)[1,1] + 
+    table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+```
+
+
+```{r}
+plot(svmfit, diabetesTrain_Scaled)
+```
+
+```{r}
+summary(svmfit)
+```
+```{r}
+# Use a linear kernel and perform cross validation to find the best cost
+set.seed(2023)
+tune.out <- tune(
+  svm, 
+  class ~ ., 
+  data = diabetesTrain_Scaled, 
+  kernel = "linear",
+  ranges = list(
+    cost = c(0.01, 0.05, 1, 3, 5, 10, 50, 60, 80, 100)
+    )
+  )
+summary(tune.out)
+plot(tune.out)
+bestmod <- tune.out$best.model
+summary(bestmod)
+
+# Predict and compute accuracy
+ypred <- predict(bestmod, diabetesTest_Scaled)
+table(predict = ypred, truth = diabetesTest_Scaled$class)
+
+(table(ypred, diabetesTest_class)[1,1] + 
+    table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+```
+
+
+
+```{r}
+# Use a polynomial kernel and perform cross validation to find the best cost
+set.seed(2023)
+tune.out <- tune(
+  svm, 
+  class ~ ., 
+  data = diabetesTrain_Scaled, 
+  kernel = "polynomial",
+  ranges = list(
+    cost = c(0.01, 0.05, 1, 10, 50, 100, 150, 200, 250, 300)
+    )
+  )
+summary(tune.out)
+plot(tune.out)
+bestmod <- tune.out$best.model
+summary(bestmod)
+
+# Predict and compute accuracy
+ypred <- predict(bestmod, diabetesTest_Scaled)
+table(predict = ypred, truth = diabetesTest_Scaled$class)
+
+(table(ypred, diabetesTest_class)[1,1] + 
+    table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+```
+
+```{r}
+# Use a polynomial kernel and perform cross validation to find the best cost
+set.seed(2023)
+tune.out <- tune(
+  svm, 
+  class ~ ., 
+  data = diabetesTrain_Scaled, 
+  kernel = "radial",
+  ranges = list(
+    cost = c(0.01, 0.05, 1, 10, 50, 100, 150)
+    )
+  )
+summary(tune.out)
+plot(tune.out)
+bestmod <- tune.out$best.model
+summary(bestmod)
+
+# Predict and compute accuracy
+ypred <- predict(bestmod, diabetesTest_Scaled)
+table(predict = ypred, truth = diabetesTest_Scaled$class)
+
+(table(ypred, diabetesTest_class)[1,1] + 
+    table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+```
+
+
 
 \newpage
 
@@ -218,6 +557,8 @@ We also plotted the 16 categorical variables in bar charts as illustrated in Sup
 
 ### Decision Tree
 The first machine learning method will be a decision tree. This method was selected because Islam et al.'s study found that a decision tree model was most accurate [-@diabetesStudy] and so this study will aim to reproduce such results. The index on the subtrees $\alpha$ will be tuned using cross-validation. Pruning will be applied to reduce the cost complexity of the tree, and random forest ensembling will be used to improve model performance.
+
+The first method 
 
 ### Neural Network
 The second method will be a neural network. This method was selected since Islam et al.'s study has not explored a model using neural networks [-@diabetesStudy] and so there is a possibility that a neural network may be more accurate than a tree-based model. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [-@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
