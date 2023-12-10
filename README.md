@@ -8,4 +8,4 @@ Assignment 2 - Predicting customer churn using logistic regression and k-nearest
 
 Assignment 3 - Predicting absenteeism at work using k-means clustering and hierarchical clustering
 
-Project - Predicting diabetes using a decision tree and neural network
+Project - Predicting diabetes using a decision tree and support vector machine
