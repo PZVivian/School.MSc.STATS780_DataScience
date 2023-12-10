@@ -21,7 +21,9 @@ geometry:
   - margin = 1in
 linestretch: 1.5
 ---
+
 ## Top of code
+
 ```{r setup}
 library(knitr)
 library(tidyverse)
@@ -91,25 +93,28 @@ kable(data.frame(Nulls=sum(nulls), Blanks=sum(blanks)))
 
 ```{r boxplot, output=FALSE}
 # Boxplot of continuous variable
-bplot <- ggplot(diabetes_pretransform, aes(y = age)) + geom_boxplot() + labs(x="",y="Age") +
+bplot <- ggplot(diabetes_pretransform, aes(y = age)) + 
+  geom_boxplot() + labs(x="", y="Age") + 
   theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
 bplot_a1 <- as.integer(unlist(ggplot_build(bplot)$data)["ymax"])
 bplot + geom_hline(yintercept = bplot_a1, linetype="dotted", color="red") + 
   geom_text(aes(0.4,bplot_a1,label = bplot_a1, vjust = 1.5, color="red"), 
             show.legend = FALSE)
 
-# Cap outliers
+# Cap outliers using upper adjacent value
 diabetes <- diabetes_pretransform %>% mutate(age = ifelse(age > bplot_a1, bplot_a1, age))
 
 ```
 
 ```{r barchart-1, output=FALSE}
 # Bar charts for each categorical variable
-ggplot(diabetes_pretransform, aes(x = gender)) + geom_bar() + labs(y = "Count", x = "Gender")
+ggplot(diabetes_pretransform, aes(x = gender)) + geom_bar() + 
+  labs(y = "Count", x = "Gender")
 ```
 
 ```{r barchart-2, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = polyuria)) + geom_bar() + labs(y = "Count", x = "Polyuria")
+ggplot(diabetes_pretransform, aes(x = polyuria)) + geom_bar() + 
+  labs(y = "Count", x = "Polyuria")
 ```
 
 ```{r barchart-3, output=FALSE}
@@ -123,7 +128,8 @@ ggplot(diabetes_pretransform, aes(x = sudden_weight_loss)) + geom_bar() +
 ```
 
 ```{r barchart-5, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = weakness)) + geom_bar() + labs(y = "Count", x = "Weakness")
+ggplot(diabetes_pretransform, aes(x = weakness)) + geom_bar() + 
+  labs(y = "Count", x = "Weakness")
 ```
 
 ```{r barchart-6, output=FALSE}
@@ -142,7 +148,8 @@ ggplot(diabetes_pretransform, aes(x = visual_blurring)) + geom_bar() +
 ```
 
 ```{r barchart-9, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = itching)) + geom_bar() + labs(y = "Count", x = "Itching")
+ggplot(diabetes_pretransform, aes(x = itching)) + geom_bar() + 
+  labs(y = "Count", x = "Itching")
 ```
 
 ```{r barchart-10, output=FALSE}
@@ -166,15 +173,18 @@ ggplot(diabetes_pretransform, aes(x = muscle_stiffness)) + geom_bar() +
 ```
 
 ```{r barchart-14, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = alopecia)) + geom_bar() + labs(y = "Count", x = "Alopecia")
+ggplot(diabetes_pretransform, aes(x = alopecia)) + geom_bar() + 
+  labs(y = "Count", x = "Alopecia")
 ```
 
 ```{r barchart-15, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = obesity)) + geom_bar() + labs(y = "Count", x = "Obesity")
+ggplot(diabetes_pretransform, aes(x = obesity)) + geom_bar() + 
+  labs(y = "Count", x = "Obesity")
 ```
 
 ```{r barchart-16, output=FALSE}
-ggplot(diabetes_pretransform, aes(x = class)) + geom_bar() + labs(y = "Count", x = "Class")
+ggplot(diabetes_pretransform, aes(x = class)) + geom_bar() + 
+  labs(y = "Count", x = "Class")
 
 ```
 
@@ -182,6 +192,7 @@ ggplot(diabetes_pretransform, aes(x = class)) + geom_bar() + labs(y = "Count", x
 # Correlation plot
 corr_matrix <- cor(diabetes_int)
 corrplot(round(corr_matrix,2), method = "number", number.cex=0.75)
+
 ```
 
 ```{r data-split, output=FALSE}
@@ -212,10 +223,11 @@ table(diabetes$class)/sum(table(diabetes$class))
 
 # Graphical summary of fitted tree
 plot(treeDiabetes)
-text(treeDiabetes, pretty = 0) #include the category names for any qualitative predictors
+text(treeDiabetes, pretty = 0)
 
 # Explore the fitted tree
 print(treeDiabetes)
+
 ```
 
 ```{r tree-fit1-pred, output=FALSE}
@@ -226,7 +238,9 @@ table(treeDiabetesPred, diabetesTest_class)
 
 # Percent that was correctly predicted
 (table(treeDiabetesPred, diabetesTest_class)[1,1] + 
-    table(treeDiabetesPred, diabetesTest_class)[2,2])/sum(table(treeDiabetesPred, diabetesTest_class))
+    table(treeDiabetesPred, diabetesTest_class)[2,2])/
+    sum(table(treeDiabetesPred, diabetesTest_class))
+
 ```
 
 ```{r tree-fit2-mrate, output=FALSE}
@@ -238,6 +252,7 @@ diabetesCV
 
 plot(diabetesCV$size, diabetesCV$dev, type = "b") 
 plot(diabetesCV$k, diabetesCV$dev, type = "b")
+
 ```
 
 ```{r tree-fit2-prune, output=FALSE}
@@ -245,7 +260,9 @@ plot(diabetesCV$k, diabetesCV$dev, type = "b")
 treeDiabetesPrune <- prune.misclass(treeDiabetes, best = 12)
 plot(treeDiabetesPrune)
 text(treeDiabetesPrune, pretty = 0)
+
 ```
+
 ```{r tree-fit2-pred, output=FALSE}
 # Use the fitted tree to predict results for the test data
 treeDiabetesPrunePred <- predict(treeDiabetesPrune, diabetesTest, type = "class")
@@ -254,7 +271,9 @@ table(treeDiabetesPrunePred, diabetesTest_class)
 
 # Percent that was correctly predicted
 (table(treeDiabetesPrunePred, diabetesTest_class)[1,1] + 
-    table(treeDiabetesPrunePred, diabetesTest_class)[2,2])/sum(table(treeDiabetesPrunePred, diabetesTest_class))
+    table(treeDiabetesPrunePred, diabetesTest_class)[2,2])/
+    sum(table(treeDiabetesPrunePred, diabetesTest_class))
+
 ```
 
 ```{r tree-rforest, output=FALSE}
@@ -272,7 +291,9 @@ yhatRF <- predict(
 
 # Percent that was correctly predicted
 (table(yhatRF, diabetesTest_class)[1,1] + 
-    table(yhatRF, diabetesTest_class)[2,2])/sum(table(yhatRF, diabetesTest_class))
+    table(yhatRF, diabetesTest_class)[2,2])/
+    sum(table(yhatRF, diabetesTest_class))
+
 ```
 
 ```{r tree-rforest-imp, output=FALSE}
@@ -281,7 +302,7 @@ varImpPlot(diabetesRF)
 
 ```
 
-```{r svm, output=FALSE}
+```{r svm-preprocess, output=FALSE}
 # ----- SUPPORT VECTOR MACHINE ----- #
 # Scale the data so the values are from 0 to 1
 normalize0to1 <- function(data){
@@ -292,31 +313,12 @@ diabetesTest_Scaled <- diabetesTest
 diabetesTrain_Scaled$age <- normalize0to1(diabetesTrain$age)
 diabetesTest_Scaled$age <- normalize0to1(diabetesTest$age)
 
-# Fit an SVM model
-set.seed(2023)
-svmfit <- svm(
-  class ~ ., 
-  data = diabetesTrain_Scaled, 
-  kernel = "linear",
-  cost = 10, 
-  scale = FALSE
-  )
-
-# Predict and compute accuracy
-ypred <- predict(svmfit, diabetesTest_Scaled)
-table(predict = ypred, truth = diabetesTest_Scaled$class)
-
-(table(ypred, diabetesTest_class)[1,1] + 
-    table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
 ```
 
-```{r}
-summary(svmfit)
-```
-```{r}
+```{r svm-linear, output=FALSE}
 # Use a linear kernel and perform cross validation to find the best cost
 set.seed(2023)
-tune.out <- tune(
+tune_linear <- tune(
   svm, 
   class ~ ., 
   data = diabetesTrain_Scaled, 
@@ -325,23 +327,24 @@ tune.out <- tune(
     cost = c(0.01, 0.05, 1, 3, 5, 10, 50, 60, 80, 100)
     )
   )
-summary(tune.out)
-plot(tune.out)
-bestmod <- tune.out$best.model
-summary(bestmod)
+summary(tune_linear)
+plot(tune_linear)
+bestmod_linear <- tune_linear$best.model
+summary(bestmod_linear)
 
 # Predict and compute accuracy
-ypred <- predict(bestmod, diabetesTest_Scaled)
+ypred <- predict(bestmod_linear, diabetesTest_Scaled)
 table(predict = ypred, truth = diabetesTest_Scaled$class)
 
 (table(ypred, diabetesTest_class)[1,1] + 
     table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+
 ```
 
-```{r}
+```{r svm-poly, output=FALSE}
 # Use a polynomial kernel and perform cross validation to find the best cost
 set.seed(2023)
-tune.out <- tune(
+tune_poly <- tune(
   svm, 
   class ~ ., 
   data = diabetesTrain_Scaled, 
@@ -350,23 +353,24 @@ tune.out <- tune(
     cost = c(0.01, 0.05, 1, 10, 50, 100, 150, 200, 250, 300)
     )
   )
-summary(tune.out)
-plot(tune.out)
-bestmod <- tune.out$best.model
-summary(bestmod)
+summary(tune_poly)
+plot(tune_poly)
+bestmod_poly <- tune_poly$best.model
+summary(bestmod_poly)
 
 # Predict and compute accuracy
-ypred <- predict(bestmod, diabetesTest_Scaled)
+ypred <- predict(bestmod_poly, diabetesTest_Scaled)
 table(predict = ypred, truth = diabetesTest_Scaled$class)
 
 (table(ypred, diabetesTest_class)[1,1] + 
     table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
+
 ```
 
-```{r}
-# Use a polynomial kernel and perform cross validation to find the best cost
+```{r svm-radial, output=FALSE}
+# Use a radial kernel and perform cross validation to find the best cost
 set.seed(2023)
-tune.out <- tune(
+tune_radial <- tune(
   svm, 
   class ~ ., 
   data = diabetesTrain_Scaled, 
@@ -375,19 +379,18 @@ tune.out <- tune(
     cost = c(0.01, 0.05, 1, 10, 50, 100, 150)
     )
   )
-summary(tune.out)
-plot(tune.out)
-bestmod <- tune.out$best.model
-summary(bestmod)
+summary(tune_radial)
+plot(tune_radial)
+bestmod_radial <- tune_radial$best.model
+summary(bestmod_radial)
 
 # Predict and compute accuracy
-ypred <- predict(bestmod, diabetesTest_Scaled)
+ypred <- predict(bestmod_radial, diabetesTest_Scaled)
 table(predict = ypred, truth = diabetesTest_Scaled$class)
 
 (table(ypred, diabetesTest_class)[1,1] + 
     table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
 ```
-
 
 \newpage
 
@@ -399,15 +402,16 @@ table(predict = ypred, truth = diabetesTest_Scaled$class)
 
 Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are directly linked to the disease [@factsWHO]. Due to its high prevalence and burden, finding ways to predict diabetes has become critical in improving population health.
 
-With today's technological capabilities and abundance of data, machine learning has become the forefront of diabetes prediction. In literature, a large variety of techniques, such as naive Bayes, decision trees, and neural networks have been studied to find the most accurate method of prediction [@litReview1; @litReview2]. 
+With today's technological capabilities and abundance of data, machine learning has become the forefront of diabetes prediction. In literature, a large variety of techniques, such as naive Bayes, decision trees, and neural networks have been studied to find the most accurate method of prediction [@litReview1; @litReview2].
 
-One notable example is Islam et al.'s study on diabetes prediction [-@diabetesStudy]. In this study, the authors collected data from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh. Naive Bayes, logistic regression, and random forest techniques were applied to the data to predict the risk of diabetes. The study concluded that a random forest model had the greatest accuracy [@diabetesStudy]. 
+One notable example is Islam et al.'s study on diabetes prediction [-@diabetesStudy]. In this study, the authors collected data from patients in Sylhet Diabetes Hospital in Sylhet, Bangladesh. Naive Bayes, logistic regression, and random forest techniques were applied to the data to predict the risk of diabetes. The study concluded that a random forest model had the greatest accuracy [@diabetesStudy].
 
 In our study, we also utilize machine learning techniques to predict the risk of diabetes. In particular, we focus on decision tree and neural network methods. The data we used was downloaded from an open source website called Kaggle [@diabetesData] and is the same data used in Islam et al.'s study [-@diabetesStudy].
 
-
 ## Methods
+
 ### Data Exploration
+
 The data set consists of `r nrow(diabetes)` observations and `r ncol(diabetes)` attributes. Before any analysis was done, a transformation was applied to the data to ensure that all categorical variables were expressed with binary indicators to ease the analysis. The response variable is a binary attribute called class that indicates whether the patient has a positive or negative risk for diabetes. The remaining attributes describe the patient and if they experience common symptoms related to the disease, such as weakness, itching, and obesity. A full list of the attributes and their meanings are outlined in Supp. @tbl-data-desc.
 
 There are no missing values in this data set since missing data was already addressed by Islam et al. after data collection [-@diabetesStudy]. To verify this, we performed a check for nulls and blanks as summarized in Supp. @tbl-missing.
@@ -425,20 +429,22 @@ Next, each of the individual attributes were explored. @fig-boxplot below shows 
 We also plotted the 16 categorical variables in bar charts as illustrated in Supp. @fig-barcharts. There appears to be a somewhat even split between the predictor values for polyuria and itching, while the remaining predictors are not evenly split. This is especially important for the class variable because there are about 200 observations with a negative diabetes risk and about 300 observations with a positive risk. This suggests that if the model does not perform well, a resampling method such as cross-validation or bootstrapping may help improve the model.
 
 ### Decision Tree
+
 The first machine learning method will be a decision tree. This method was selected because Islam et al.'s study found that a decision tree model was most accurate [-@diabetesStudy] and so this study will aim to reproduce such results. The index on the subtrees $\alpha$ will be tuned using cross-validation. Pruning will be applied to reduce the cost complexity of the tree, and random forest ensembling will be used to improve model performance.
 
-The first method 
+The first method
 
 ### Support Vector Machine
+
 The second method will be a support vector machine (SVM). This method was selected since . A neural network method was considered, but we noticed there are only 520 observations. Neural networks are optimal for large datasets while SVM performs well with smaller datasets and especially for classification problems.
 
 ### Neural Network
+
 The second method will be a neural network. This method was selected since Islam et al.'s study has not explored a model using neural networks [-@diabetesStudy] and so there is a possibility that a neural network may be more accurate than a tree-based model. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [-@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
 
-
 ## Results
-After the two models are built, they will each be assessed using misclassification rate, accuracy, specificity, and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit to predict diabetes. By nature, decision trees are easier to interpret and reproducible compared to neural networks. Thus, these qualities will also be considered in its comparison.
 
+After the two models are built, they will each be assessed using misclassification rate, accuracy, specificity, and sensitivity. A comparison of these four measurements will reveal which model is a stronger fit to predict diabetes. By nature, decision trees are easier to interpret and reproducible compared to neural networks. Thus, these qualities will also be considered in its comparison.
 
 \newpage
 
@@ -517,7 +523,6 @@ After the two models are built, they will each be assessed using misclassificati
 
 Bar charts of categorical variables
 :::
-
 
 ### Code
 
