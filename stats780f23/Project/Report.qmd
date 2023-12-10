@@ -28,9 +28,7 @@ library(tidyverse)
 library(corrplot)
 library(tree)
 library(randomForest)
-library(nnet)
-library(torch)
-library(luz)
+library(e1071)
 
 ```
 
@@ -106,7 +104,7 @@ diabetes <- diabetes_pretransform %>% mutate(age = ifelse(age > bplot_a1, bplot_
 ```
 
 ```{r barchart-1, output=FALSE}
-# Barplots for each categorical variable
+# Bar charts for each categorical variable
 ggplot(diabetes_pretransform, aes(x = gender)) + geom_bar() + labs(y = "Count", x = "Gender")
 ```
 
@@ -187,23 +185,20 @@ corrplot(round(corr_matrix,2), method = "number", number.cex=0.75)
 ```
 
 ```{r data-split, output=FALSE}
+# ----- DATA SPLITTING ----- #
 # Split the data into test and training set
 set.seed(2023)
 trainIndex <- sample(1:nrow(diabetes), round(nrow(diabetes)/2, 0), replace = FALSE)
 diabetesTrain <- diabetes[trainIndex, ]
 diabetesTest <- diabetes[-trainIndex, ]
 
-# Pull out classes for testing (vector version)
+# Pull out classes for testing
 diabetesTest_class <- diabetes$class[-trainIndex]
-
-# Pull out classes for testing (matrix version)
-classLabs <- pull(diabetes, class) %>% class.ind()
-diabetesTrain_class_mat <- classLabs[trainIndex,]
-diabetesTest_class_mat <- classLabs[-trainIndex,]
 
 ```
 
 ```{r tree-fit1, output=FALSE}
+# ----- DECISION TREE ----- #
 # Fit the classification tree
 treeDiabetes <- tree(
   class ~ ., 
@@ -275,6 +270,7 @@ yhatRF <- predict(
   diabetesRF, newdata = diabetesTest
   )
 
+# Percent that was correctly predicted
 (table(yhatRF, diabetesTest_class)[1,1] + 
     table(yhatRF, diabetesTest_class)[2,2])/sum(table(yhatRF, diabetesTest_class))
 ```
@@ -285,128 +281,8 @@ varImpPlot(diabetesRF)
 
 ```
 
-
-```{r network, output=FALSE}
-# Use trial and error to find the size and decay that produces a minimal test error rate.
-
-## TRY 1 ##
-# Build a single layer neural network
-diabetesNN <- nnet(
-  x = diabetesTrain,
-  y = diabetesTrain_class_mat,
-  size = 1, 
-  decay = 2, 
-  softmax = TRUE)
-# Predict using the neural network and compute the test error rate
-diabetesNN_pred <- predict(diabetesNN, diabetesTest, type="class")
-tab <- table(slice(diabetes, -trainIndex) %>% pull(class), diabetesNN_pred)
-1-sum(diag(tab))/sum(tab)
-
-```
-
-```{r}
-## TRY 2 ##
-# Build a single layer neural network
-diabetesNN <- nnet(
-  x = diabetesTrain, 
-  y = diabetesTrain_class_mat, 
-  size = 15, 
-  decay = 2, 
-  softmax = TRUE)
-# Predict using the neural network and compute the test error rate
-diabetesNN_pred <- predict(diabetesNN, diabetesTest, type="class")
-tab <- table(slice(diabetes, -trainIndex) %>% pull(class), diabetesNN_pred)
-1-sum(diag(tab))/sum(tab)
-
-```
-
-```{r}
-modelnn <- nn_module(
-  initialize = function() {
-    self$linear1 <- nn_linear(in_features = 17, out_features = 8)
-    self$linear2 <- nn_linear(in_features = 8, out_features = 4)
-    self$linear3 <- nn_linear(in_features = 4, out_features = 2)
-    
-    self$drop1 <- nn_dropout(p = 0.4)
-    self$drop2 <- nn_dropout(p = 0.3)
-    
-    self$activation <- nn_relu()
-    
-  },
-  forward = function(x) {# specify the order to call the layers
-    x %>% 
-      
-      self$linear1() %>% 
-      self$activation() %>% 
-      self$drop1() %>% 
-      
-      self$linear2() %>% 
-      self$activation() %>% 
-      self$drop2() %>% 
-      
-      self$linear3()
-  }
-)
-```
-
-```{r}
-print(modelnn())
-```
-
-```{r}
-modelnn <- modelnn %>% 
-  setup(
-    loss = nn_cross_entropy_loss(),
-    optimizer = optim_rmsprop, 
-    metrics = list(luz_metric_accuracy())
-  )
-```
-
-```{r}
-# Change to torch data set
-diabetesTrain_tensor <- torch_tensor(data.matrix(diabetesTrain)-1, dtype = torch_float())
-
-# Run neural network
-system.time(
-   fitted <- modelnn %>%
-      fit(
-        data = diabetesTrain_tensor, 
-        epochs = 2, # max epochs
-        valid_data = 0.5,
-        dataloader_options = list(batch_size = 20),#how many samples per batch to load
-        verbose = FALSE
-      )
- )
-plot(fitted)
-```
-
-```{r}
-accuracy <- function(pred, truth) {
-   mean(pred == truth) 
-  }
-
-# gets the true classes from all observations in test_ds.
-truth <- sapply(
-  seq_along(test_ds), function(x) test_ds[x][[2]]
-  )
-
-fitted %>% 
-  predict(test_ds) %>% 
-  torch_argmax(dim = 2) %>%  # the predicted class is the one with higher 'logit'.
-  as_array() %>% # we convert to an R object
-  accuracy(truth)
-```
-
-```{r}
-write.csv(diabetesTrain, "diabetesTrain.csv", row.names=FALSE)
-write.csv(diabetesTest, "diabetesTest.csv", row.names=FALSE)
-```
-
-
-## SVM
-```{r}
-library(e1071)
-
+```{r svm, output=FALSE}
+# ----- SUPPORT VECTOR MACHINE ----- #
 # Scale the data so the values are from 0 to 1
 normalize0to1 <- function(data){
   (data-min(data))/(max(data)-min(data))
@@ -426,16 +302,12 @@ svmfit <- svm(
   scale = FALSE
   )
 
+# Predict and compute accuracy
 ypred <- predict(svmfit, diabetesTest_Scaled)
 table(predict = ypred, truth = diabetesTest_Scaled$class)
 
 (table(ypred, diabetesTest_class)[1,1] + 
     table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
-```
-
-
-```{r}
-plot(svmfit, diabetesTrain_Scaled)
 ```
 
 ```{r}
@@ -465,8 +337,6 @@ table(predict = ypred, truth = diabetesTest_Scaled$class)
 (table(ypred, diabetesTest_class)[1,1] + 
     table(ypred, diabetesTest_class)[2,2])/sum(table(ypred, diabetesTest_class))
 ```
-
-
 
 ```{r}
 # Use a polynomial kernel and perform cross validation to find the best cost
@@ -519,7 +389,6 @@ table(predict = ypred, truth = diabetesTest_Scaled$class)
 ```
 
 
-
 \newpage
 
 ## Abstract
@@ -559,6 +428,9 @@ We also plotted the 16 categorical variables in bar charts as illustrated in Sup
 The first machine learning method will be a decision tree. This method was selected because Islam et al.'s study found that a decision tree model was most accurate [-@diabetesStudy] and so this study will aim to reproduce such results. The index on the subtrees $\alpha$ will be tuned using cross-validation. Pruning will be applied to reduce the cost complexity of the tree, and random forest ensembling will be used to improve model performance.
 
 The first method 
+
+### Support Vector Machine
+The second method will be a support vector machine (SVM). This method was selected since . A neural network method was considered, but we noticed there are only 520 observations. Neural networks are optimal for large datasets while SVM performs well with smaller datasets and especially for classification problems.
 
 ### Neural Network
 The second method will be a neural network. This method was selected since Islam et al.'s study has not explored a model using neural networks [-@diabetesStudy] and so there is a possibility that a neural network may be more accurate than a tree-based model. The number of hidden layers and the units per layer will be tuned through trial and error. Based on James et al.'s book on statistical learning [-@introToStatsLearning], the units per layer will be set to some large value and overfitting will be controlled with ridge regularization. The strength of the regularization $\lambda$ will be tuned at each layer.
