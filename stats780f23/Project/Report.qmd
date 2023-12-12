@@ -440,7 +440,7 @@ radial_misclass <- 1-radial_accuracy
 
 ```{r svm-summary, output=FALSE}
 # Summary table of stats
-model <- c("Linear", "Polynomial", "Radial")
+model <- c("Linear", "Polynomial", "RBF")
 accuracy <- c(linear_accuracy, poly_accuracy, radial_accuracy)
 sensitivity <- c(linear_sensitivity, poly_sensitivity, radial_sensitivity)
 specificity <- c(linear_specificity, poly_specificity, radial_specificity)
@@ -474,6 +474,8 @@ kable(final_summary)
 \newpage
 
 ## Abstract
+Diabetes is a chronic disease that impacts millions of people worldwide. Machine learning methods are being used to develop a diabetes prediction model, however more research is required to explore different types of models and improve accuracy. In this paper, we use decision tree and support vector machine methods to predict the risk of diabetes. The random forest and SVM with a radial basis function kernel had the highest performance with an accuracy of `r as.percent(dForest_accuracy)` and `r as.percent(radial_accuracy)` respectively.
+
 
 ## Introduction
 
@@ -556,7 +558,11 @@ It is important to note that there is a moderate correlation between polyuria an
 
 ### Support Vector Machine
 
-@tbl-svm-summary summarizes the performance of the SVM models.
+@tbl-svm-summary summarizes the performance of the SVM models. The linear kernel
+
+The polynomial
+
+Among the three kernels used, the RBF had the highest accuracy at `r as.percent(radial_accuracy)`. Its ability to predict those with diabetes risk is about `r as.percent(radial_sensitivity - radial_specificity)` higher than its ability to predict those without diabetes risk.
 
 ```{r}
 #| label: tbl-svm-summary
