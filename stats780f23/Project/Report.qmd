@@ -226,7 +226,7 @@ text(dTree, pretty = 0)
 # Use the fitted tree to predict results for the test data
 dTree_pred <- predict(dTree, diabetesTest, type = "class")
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 dTree_cmat <- table(dTree_pred, diabetesTest_class)
 dTree_accuracy <- (dTree_cmat[1,1] + dTree_cmat[2,2])/sum(dTree_cmat)
 dTree_sensitivity <- dTree_cmat[2,2]/sum(dTree_cmat[2,])
@@ -261,7 +261,7 @@ text(dPruneTree, pretty = 0)
 # Use the fitted tree to predict results for the test data
 dPruneTree_pred <- predict(dPruneTree, diabetesTest, type = "class")
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 dPruneTree_cmat <- table(dPruneTree_pred, diabetesTest_class)
 dPruneTree_accuracy <- (dPruneTree_cmat[1,1] + dPruneTree_cmat[2,2])/
                         sum(dPruneTree_cmat)
@@ -272,23 +272,48 @@ dPruneTree_misclass <- 1-dPruneTree_accuracy
 ```
 
 ```{r tree-rforest, output=FALSE}
-# Random forest to improve results
+# Cross-validation to pick the best mtry for random forest
 set.seed(2023)
+cv_mtry <- c(2:10)
+cv_misclass <- c()
+cv_forest <- c()
+for (m in cv_mtry) {
+  cvForest <- randomForest(
+    class ~ ., data = diabetes,
+    subset = trainIndex,
+    ntree = 1000,
+    mtry = m)
+  cvForest_pred <- predict(cvForest, newdata = diabetesTest)
+  cvForest_cmat <- table(cvForest_pred, diabetesTest_class)
+  cv_misclass <- c(cv_misclass, 
+                   (cvForest_cmat[1,2] + cvForest_cmat[2,1])/sum(cvForest_cmat))
+  cv_forest <- c(cv_forest, cvForest)
+}
+cv_mtry_best <- cv_mtry[cv_misclass==min(cv_misclass)][1]
+
+# Grow random forest using best mtry
 dForest <- randomForest(
   class ~ ., data = diabetes,
-  subset = trainIndex, 
-  mtry = 4, 
+  subset = trainIndex,
+  ntree = 1000,
+  mtry = cv_mtry_best, 
   importance = TRUE)
 
 # Use the random forest to predict results for the test data
 dForest_pred <- predict(dForest, newdata = diabetesTest)
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 dForest_cmat <- table(dForest_pred, diabetesTest_class)
 dForest_accuracy <- (dForest_cmat[1,1] + dForest_cmat[2,2])/sum(dForest_cmat)
 dForest_sensitivity <- dForest_cmat[2,2]/sum(dForest_cmat[2,])
 dForest_specificity <- dForest_cmat[1,1]/sum(dForest_cmat[1,])
 dForest_misclass <- 1-dForest_accuracy
+
+```
+
+```{r tree-rforest-cv, output=FALSE}
+# Plot the cross-validation on a chart
+plot(cv_mtry, cv_misclass, type = "b", xlab="predictors", ylab="error")
 
 ```
 
@@ -300,17 +325,17 @@ varImpPlot(dForest, main="")
 
 ```{r tree-summary, output=FALSE}
 # Summary table of stats
-as.3percent <- function(value){paste0(round(value*100,3),"%")}
+as.percent <- function(value){paste0(round(value*100,2),"%")}
 model <- c("Initial tree, 16 nodes", "Pruned tree, 12 nodes", "Random forest")
 accuracy <- c(dTree_accuracy, dPruneTree_accuracy, dForest_accuracy)
 sensitivity <- c(dTree_sensitivity, dPruneTree_sensitivity, dForest_sensitivity)
 specificity <- c(dTree_specificity, dPruneTree_specificity, dForest_specificity)
 misclass <- c(dTree_misclass, dPruneTree_misclass, dForest_misclass)
 tree_summary <- data.frame("Model" = model, 
-                           "Accuracy" = as.3percent(accuracy),
-                           "Sensitivity" = as.3percent(sensitivity), 
-                           "Specificity" = as.3percent(specificity),
-                           "Misclassification Rate" = as.3percent(misclass),
+                           "Accuracy" = as.percent(accuracy),
+                           "Sensitivity" = as.percent(sensitivity), 
+                           "Specificity" = as.percent(specificity),
+                           "Misclassification Rate" = as.percent(misclass),
                            check.names = FALSE)
 kable(tree_summary)
 ```
@@ -348,7 +373,7 @@ bestmod_linear <- tune_linear$best.model
 # Use the linear svm to predict results for the test data
 linear_pred <- predict(bestmod_linear, diabetesTest_Scaled)
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 linear_cmat <- table(linear_pred, diabetesTest_Scaled$class)
 linear_accuracy <- (linear_cmat[1,1] + linear_cmat[2,2])/sum(linear_cmat)
 linear_sensitivity <- linear_cmat[2,2]/sum(linear_cmat[2,])
@@ -376,7 +401,7 @@ bestmod_poly <- tune_poly$best.model
 # Use the polynomial svm to predict results for the test data
 poly_pred <- predict(bestmod_poly, diabetesTest_Scaled)
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 poly_cmat <- table(poly_pred, diabetesTest_Scaled$class)
 poly_accuracy <- (poly_cmat[1,1] + poly_cmat[2,2])/sum(poly_cmat)
 poly_sensitivity <- poly_cmat[2,2]/sum(poly_cmat[2,])
@@ -404,7 +429,7 @@ bestmod_radial <- tune_radial$best.model
 # Use the radial svm to predict results for the test data
 radial_pred <- predict(bestmod_radial, diabetesTest_Scaled)
 
-# Compute accuracy, sensitivity, and specificity
+# Compute model performance parameters
 radial_cmat <- table(radial_pred, diabetesTest_Scaled$class)
 radial_accuracy <- (radial_cmat[1,1] + radial_cmat[2,2])/sum(radial_cmat)
 radial_sensitivity <- radial_cmat[2,2]/sum(radial_cmat[2,])
@@ -421,10 +446,10 @@ sensitivity <- c(linear_sensitivity, poly_sensitivity, radial_sensitivity)
 specificity <- c(linear_specificity, poly_specificity, radial_specificity)
 misclass <- c(linear_misclass, poly_misclass, radial_misclass)
 svm_summary <- data.frame("Model" = model, 
-                          "Accuracy" = as.3percent(accuracy),
-                          "Sensitivity" = as.3percent(sensitivity), 
-                          "Specificity" = as.3percent(specificity),
-                          "Misclassification Rate" = as.3percent(misclass),
+                          "Accuracy" = as.percent(accuracy),
+                          "Sensitivity" = as.percent(sensitivity), 
+                          "Specificity" = as.percent(specificity),
+                          "Misclassification Rate" = as.percent(misclass),
                           check.names = FALSE)
 kable(svm_summary)
 ```
@@ -437,10 +462,10 @@ sensitivity <- c(dForest_sensitivity, radial_sensitivity)
 specificity <- c(dForest_specificity, radial_specificity)
 misclass <- c(dForest_misclass, radial_misclass)
 final_summary <- data.frame("Model" = model, 
-                            "Accuracy" = as.3percent(accuracy),
-                            "Sensitivity" = as.3percent(sensitivity), 
-                            "Specificity" = as.3percent(specificity),
-                            "Misclassification Rate" = as.3percent(misclass),
+                            "Accuracy" = as.percent(accuracy),
+                            "Sensitivity" = as.percent(sensitivity), 
+                            "Specificity" = as.percent(specificity),
+                            "Misclassification Rate" = as.percent(misclass),
                             check.names = FALSE)
 kable(final_summary)
 ```
@@ -462,10 +487,14 @@ In our study, we perform a similar analysis using decision tree and support vect
 
 To begin the study, we performed data visualization and handled any detected problems by applying data transformation. We then randomly split the data into two equal parts to use as training and testing sets for both of the methods.
 
-The first method we used was a decision tree. This method was selected because Islam et al.'s study found that a decision tree model was most accurate [-@diabetesStudy], and so our goal is to validate and reproduce the results of their tree. The first tree we fit had a terminal size of `r summary(dTree)$size` nodes. To improve the accuracy and reduce the cost complexity of the tree, we used cross-validation as shown in @fig-tree-fit1-cv below and found that a size of `r best_size` nodes produced the lowest misclassification error rate. Pruning was applied using this node size. After pruning the tree, we then used random forest ensembling to further improve model performance.
+The first method we used was a decision tree. This method was selected because Islam et al.'s study found that a decision tree model was most accurate [-@diabetesStudy], and so our goal is to validate and reproduce the results of their tree. The first tree we fit had a terminal size of `r summary(dTree)$size` nodes. To improve the accuracy and reduce the cost complexity of the tree, we used cross-validation to select the node size that produced the lowest misclassification error rate and pruned the tree accordingly. The cross-validation is illustrated in @fig-tree-fit1-cv below. After pruning the tree, we then used random forest ensembling to further improve model performance. `r dForest$ntree` trees were grown and `r dForest$mtry` predictors were sampled for splitting at each node. We chose an arbitrary large value for the number of trees and used cross-validation to select the number of predictors to split at each node. @fig-tree-rforest-cv shows the random forest cross-validation.
 
+::: {layout="[48,-2,48]"}
 ```{r fig-tree-fit1-cv, ref.label="tree-fit1-cv", output=TRUE, message=FALSE, fig.cap="Cross-validation of decision tree prior to pruning; Optimal size = 12", fig.width=5, fig.height=3.5}
 ```
+```{r fig-tree-rforest-cv, ref.label="tree-rforest-cv", output=TRUE, message=FALSE, fig.cap="Cross-validation of random forest; Optimal number of predictors = 5", fig.width=5, fig.height=3.5}
+```
+:::
 
 The second method we used was SVM. This method was selected because Islam et al. [-@diabetesStudy] have not used this method in their analyses, and so our goal is to determine whether an SVM model would better predict the risk of diabetes compared to a tree-based model. In addition, SVMs are considered as a strong model choice for binary classification [@introToStatsLearning], which is the type of data problem we are working with. We first started by scaling the data to ensure that units are between 0 and 1 across all variables. Since majority of the variables are categorical and one-hot encoded, we only needed to scale the age variable. We then performed SVM multiple times using kernel adjustments and cross-validation for cost. The three kernel types we investigated include linear, polynomial, and radial basis function (RBF) kernels. For each of these kernels, we used cross-validation to determine the cost that would produce the lowest misclassification error rate. As illustrated in @fig-svm-linear-cv, @fig-svm-poly-cv, and @fig-svm-radial-cv, the optimal costs were `r bestmod_linear$cost`, `r bestmod_poly$cost`, and `r bestmod_radial$cost` for the linear, polynomial, and RBF kernels respectively.
 
@@ -498,12 +527,11 @@ Next, each of the individual attributes were explored. @fig-boxplot below shows 
 ```{r fig-boxplot, ref.label="boxplot", output=TRUE, message=FALSE, fig.cap="Boxplot of age", fig.height=2.5, fig.width=3}
 ```
 
-We also plotted the 16 categorical variables in bar charts as illustrated in Supp. @fig-barcharts. There appears to be a somewhat even split between the predictor values for polyuria and itching, while the remaining predictors are not evenly split. This is especially important for the class variable because there are about 200 observations with a negative diabetes risk and about 300 observations with a positive risk. This suggests that if the model does not perform well, a resampling method such as cross-validation or bootstrapping may help improve the model. As such, we have first modelled the data in its original distribution and made adjustments as required.
+We also plotted the 16 categorical variables in bar charts as illustrated in Supp. @fig-barcharts. There appears to be a somewhat even split between the predictor values for polyuria and itching, while the remaining predictors are not evenly split. This is especially important for the class variable because there are about 200 observations with a negative diabetes risk and about 300 observations with a positive risk. This suggests that if the model does not perform well, a resampling method such as cross-validation or bootstrapping may help improve the model. As such, we have first modelled the data in its original distribution and allowed for adjustments as required.
 
 ### Decision Tree
 
-```{r fig-tree-fit2-prune, ref.label="tree-fit2-prune", output=TRUE, message=FALSE, fig.cap="Pruned decision tree with 12 terminal nodes", fig.height=4.5, fig.width=7}
-```
+@tbl-tree-summary summarizes the performance of the tree-based models. The initial tree had an accuracy of `r as.percent(dTree_accuracy)`. Its ability to predict those with diabetes risk is about `r as.percent(dTree_sensitivity - dTree_specificity)` higher than its ability to predict those without diabetes risk.
 
 ```{r}
 #| label: tbl-tree-summary
@@ -513,10 +541,22 @@ We also plotted the 16 categorical variables in bar charts as illustrated in Sup
 #| message: FALSE
 ```
 
-```{r fig-tree-rforest-imp, ref.label="tree-rforest-imp", output=TRUE, message=FALSE, fig.cap="Importance of variables from random forest", fig.height=5, fig.width=8}
+While pruning the tree reduced its cost complexity, no improvements to the accuracy were observed. Nonetheless, the pruned tree gives us insight into what variables and values are linked to a greater risk for diabetes as shown in @fig-tree-fit2-prune. In particular, we can see that polydipsia and gender are the first two variables to appear on the tree and are likely strong predictors for the disease. Additionally, the first internal node of the tree shows that the presence of polydipsia is likely linked with diabetes risk while the absence of polydipsia requires additional variables to determine risk.
+
+```{r fig-tree-fit2-prune, ref.label="tree-fit2-prune", output=TRUE, message=FALSE, fig.cap="Pruned decision tree with 12 terminal nodes", fig.height=5, fig.width=7}
 ```
 
+The random forest had the best performance among the three models with an accuracy of `r as.percent(dForest_accuracy)`. Its ability to predict cases of diabetes risk and cases without diabetes risk is nearly even. From the random forest, we were also able to obtain a more thorough analysis on variable importance. In particular, the most important variables in predicting diabetes include polyuria, polydipsia, gender, and age as shown in @fig-tree-rforest-imp. This is determined using both the mean decrease in accuracy and Gini index. Being aware of these four variables may help healthcare professionals identify patients with a greater risk for the disease and facilitate early diagnosis.
+
+```{r fig-tree-rforest-imp, ref.label="tree-rforest-imp", output=TRUE, message=FALSE, fig.cap="Importance of variables from random forest; Top is the most important and bottom is the least important", fig.height=5, fig.width=8}
+```
+
+It is important to note that there is a moderate correlation between polyuria and polydipsia as observed in @fig-corr which we've presented earlier. To clarify, polyuria is a medical condition characterized by excessive urination while polydipsia is characterized by excessive water consumption [@polyuria; @polydipsia]. Since water consumption leads to urination, this could explain why both variables are similar in terms of importance. While we consider this correlation to be a moderate one, future studies could remove one of the variables or increase the random forest tree size if they believe there is a large variance resulting from their correlation.
+
+
 ### Support Vector Machine
+
+@tbl-svm-summary summarizes the performance of the SVM models.
 
 ```{r}
 #| label: tbl-svm-summary
@@ -534,6 +574,11 @@ We also plotted the 16 categorical variables in bar charts as illustrated in Sup
 #| output: TRUE
 #| message: FALSE
 ```
+
+- Increasing random forest size
+- Computational cost (of SVM)
+- Kernel adjustments
+- Generalizability (only in Bangladesh)
 
 \newpage
 
