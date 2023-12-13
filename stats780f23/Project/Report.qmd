@@ -22,8 +22,6 @@ geometry:
 linestretch: 1.5
 ---
 
-## Top of code
-
 ```{r setup}
 library(knitr)
 library(tidyverse)
@@ -217,7 +215,6 @@ as.percent <- function(value){paste0(round(value*100,2),"%")}
 
 ```
 
-### Decision tree
 ```{r tree-fit1, output=FALSE}
 # ----- DECISION TREE ----- #
 # Fit the classification tree
@@ -346,7 +343,6 @@ tree_summary <- data.frame("Model" = model,
 kable(tree_summary)
 ```
 
-### SVM
 ```{r svm-preprocess, output=FALSE}
 # ----- SUPPORT VECTOR MACHINE ----- #
 # Scale the data so the values are from 0 to 1
@@ -485,7 +481,7 @@ Diabetes is a chronic disease that impacts millions of people worldwide. Machine
 
 ## Introduction
 
-Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are directly linked to the disease [-@factsWHO]. Due to its large impact, finding a way to accurately predict diabetes has become paramount to improve global health. In this paper, we aim to address this problem by leveraging machine learning techniques to predict the risk of diabetes.
+Diabetes is a chronic disease that occurs when the body cannot effectively produce or use insulin to regulate sugar levels in the blood. According to the World Health Organization, 422 million people have diabetes worldwide and 1.5 million deaths that occur every year are directly linked to the disease [-@factsWHO]. Due to its large impact, finding a way to accurately predict diabetes is crucial to improve global health. In this paper, we aim to address this problem by leveraging machine learning techniques to predict the risk of diabetes.
 
 Various machine learning techniques have already been studied in current literature to find an accurate risk prediction model [@litReview1; @litReview2]. One notable example is Islam et al.'s study which analyzes symptoms from patients of a diabetes hospital in Sylhet, Bangladesh [-@diabetesStudy]. The authors used naive Bayes, logistic regression, and random forest methods, and found that their random forest model had the greatest accuracy among the three methods used [@diabetesStudy].
 
@@ -500,7 +496,7 @@ The first method we used was a decision tree. This method was selected because I
 ::: {layout="[48,-2,48]"}
 ```{r fig-tree-fit1-cv, ref.label="tree-fit1-cv", output=TRUE, message=FALSE, fig.cap="Cross-validation of decision tree prior to pruning; Optimal size = 12", fig.width=5, fig.height=3.5}
 ```
-```{r fig-tree-rforest-cv, ref.label="tree-rforest-cv", output=TRUE, message=FALSE, fig.cap="Cross-validation of random forest; Optimal number of predictors = 5", fig.width=5, fig.height=3.5}
+```{r fig-tree-rforest-cv, ref.label="tree-rforest-cv", output=TRUE, message=FALSE, fig.cap="Cross-validation of random forest; Optimal number of predictors = 6", fig.width=5, fig.height=3.5}
 ```
 :::
 
@@ -559,7 +555,7 @@ The random forest had the best performance among the three models with an accura
 ```{r fig-tree-rforest-imp, ref.label="tree-rforest-imp", output=TRUE, message=FALSE, fig.cap="Importance of variables from random forest; Top is the most important and bottom is the least important", fig.height=5, fig.width=8}
 ```
 
-It is important to note that there is a moderate correlation between polyuria and polydipsia as observed in @fig-corr which we've presented earlier. To clarify, polyuria is a medical condition characterized by excessive urination while polydipsia is characterized by excessive water consumption [@polyuria; @polydipsia]. Since water consumption leads to urination, this could explain why both variables are follow closely with one another in terms of importance. While we consider this correlation to be a moderate one, future studies could remove one of the variables or increase the number of trees in the random forest if they believe there is a large variance resulting from this correlation.
+It is important to note that there is a moderate correlation between polyuria and polydipsia as observed in @fig-corr which we've presented earlier. To clarify, polyuria is a medical condition characterized by excessive urination while polydipsia is characterized by excessive water consumption [@polyuria; @polydipsia]. Since water consumption leads to urination, this could explain why both variables follow closely with one another in terms of importance. While we consider this correlation to be a moderate one, future studies could remove one of the variables or increase the number of trees in the random forest if they believe there is a large variance resulting from this correlation.
 
 
 ### Support Vector Machine
@@ -568,7 +564,7 @@ It is important to note that there is a moderate correlation between polyuria an
 
 Using a polynomial kernel improved the accuracy to `r as.percent(poly_accuracy)` and reduced the misclassification error rate to about 4 out of every 100 patients. While the model's ability to correctly predict a negative case of risk is `r as.percent(poly_specificity)`, its ability to predict a positive one is only `r as.percent(poly_sensitivity)`. This indicates that the model prediction tends to miss some cases of disease.
 
-Finally, the SVM model with an RBF kernel had an accuracy of `r as.percent(radial_accuracy)`, which is the highest value among the three kernels. In the clinical setting, this means about 2 out of 100 patients would be incorrectly classified in terms of diabetes risk, which is a decent improvement compared to the linear kernel model. Its specificity is slightly lower than the polynomial kernel model, but its sensitivity is higher by about `r as.percent(radial_sensitivity - poly_sensitivity)`.
+Finally, the SVM model with an RBF kernel had an accuracy of `r as.percent(radial_accuracy)`, which is the highest value among the three kernels. From a clinical perspective, this means about 2 out of 100 patients would be incorrectly classified in terms of diabetes risk, which is a decent improvement compared to the linear kernel model. Its specificity is slightly lower than the polynomial kernel model, but its sensitivity is higher by about `r as.percent(radial_sensitivity - poly_sensitivity)`.
 
 ```{r}
 #| label: tbl-svm-summary
@@ -579,6 +575,11 @@ Finally, the SVM model with an RBF kernel had an accuracy of `r as.percent(radia
 ```
 
 ## Conclusion
+
+Overall, each of the models in our study achieved an accuracy in the 90% to 99% range. While this may seem high, minimizing misclassification error is paramount from a medical perspective since patient health is highly dependent on accurate disease assessment. For this reason, many of the models we developed may not provide enough accuracy to be used as the sole predictive tool for diabetes in clinical practice. However, combining the predictions and important variables from these models along with other tools may be useful.
+
+@tbl-final-summary summarizes the top two models in our study. From the table, we can see that the random forest outperforms SVM for all parameters except specificity. As a result, we can conclude that our random forest model is our highest performing model. This aligns with Islam et. al's study [-@diabetesStudy] since they also found that their random forest methods had the highest performance. They were able to achieve an accuracy of 97% using ten-fold cross-validation and 99% using 80:20 percentage split for their random forest models [@diabetesStudy]. These results are very similar to our random forest accuracy of `r as.percent(dForest_accuracy)`. Thus, we can say that our model results are consistent with current literature and that decision trees, specifically random forests, remain as the most accurate method for diabetes risk prediction.
+
 ```{r}
 #| label: tbl-final-summary
 #| ref-label: final-summary
@@ -587,13 +588,10 @@ Finally, the SVM model with an RBF kernel had an accuracy of `r as.percent(radia
 #| message: FALSE
 ```
 
-- All of the models had very high accuracy, but in the context of the data minimizing misclassification is crucial to deem the prediction plausible for clinical use
-- 
+For the remainder of this section, we will discuss some of the analytical challenges in this study and recommendations to improve future models. We'll begin with the random forest method where the biggest challenge we faced was ensuring stability in the results. As stated earlier, we selected an arbitrarily large value for the number of trees. This arbitrary number could be run quickly within the limitations of our machinery. Thus, increasing the number of trees may help improve the stability of random forest models for future studies.
 
-- Increasing random forest size
-- Computational cost (of SVM)
-- Kernel adjustments
-- Generalizability (only in Bangladesh)
+For the SVM method, selecting the best cost and kernel was our biggest challenge. The optimal choice of cost requires a balance between bias and variance. As mentioned earlier, the costs obtained through cross-validation were `r bestmod_linear$cost`, `r bestmod_poly$cost`, and `r bestmod_radial$cost` for the linear, polynomial, and RBF kernels respectively. The cost for the linear kernel model was quite low and as a result this could indicate high bias and low variance. On the other hand, the cost for the polynomial kernel model was quite high indicating that there may be a low bias and high variance. This suggests that both these models may not be a great fit with the costs selected. One way to improve this issue for future models is to apply repeated cross-validation to pick the optimal cost. Another challenge with the SVM method is selecting the best kernel. We investigated three types of kernels and selected the model with the greatest accuracy. However, this poses some risk for overfitting. Thus, further analysis on the pattern of data help us improve kernel tuning for future SVM models.
+
 
 \newpage
 
