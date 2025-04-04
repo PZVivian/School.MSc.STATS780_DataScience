@@ -1,5 +1,5 @@
-# STATS 780 Data Science Projects
-This repository contains projects for the STATS 780 Data Science course at McMaster University completed during my Master's degree.
+# STATS 780 Data Science
+This repository contains projects for the STATS 780 Data Science course at McMaster University completed during my master's studies.
 
 ## Contents
 Assignment 1 - Visualizing asbestos waste trends across Canada
